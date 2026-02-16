@@ -98,15 +98,22 @@
                     </StackPanel>
                 </DockPanel>
 
-                <ListBox ItemsSource="{Binding Projects}"
+                <ListBox x:Name="ProjectListBox"
+                         ItemsSource="{Binding Projects}"
                          SelectedItem="{Binding SelectedProject}"
                          Background="Transparent" BorderThickness="0"
                          Padding="4,0"
+                         AllowDrop="True"
+                         PreviewMouseLeftButtonDown="ProjectList_PreviewMouseLeftButtonDown"
+                         PreviewMouseMove="ProjectList_PreviewMouseMove"
+                         Drop="ProjectList_Drop"
+                         DragOver="ProjectList_DragOver"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
                             <Setter Property="Padding" Value="10,6" />
                             <Setter Property="Margin" Value="0,1" />
+                            <Setter Property="AllowDrop" Value="True" />
                             <Style.Triggers>
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter Property="Foreground" Value="{DynamicResource ThemeAccent}" />
