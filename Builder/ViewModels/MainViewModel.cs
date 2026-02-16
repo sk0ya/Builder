@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Media;
 using Builder.Models;
 using Builder.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -30,11 +31,61 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _isBusy;
 
+    private string _backgroundColorHex = "#1E1E1E";
+    private string _accentColorHex = "#4FC3F7";
+
     public bool HasSelectedProject => SelectedProject != null;
 
     public MainViewModel()
     {
         LoadProjects();
+        LoadTheme();
+    }
+
+    private void LoadTheme()
+    {
+        var settings = _settingsService.Load();
+        _backgroundColorHex = settings.BackgroundColor;
+        _accentColorHex = settings.AccentColor;
+        ApplyTheme();
+    }
+
+    private void ApplyTheme()
+    {
+        var bgColor = ParseColor(_backgroundColorHex);
+        var accentColor = ParseColor(_accentColorHex);
+
+        var res = Application.Current.Resources;
+        res["MaterialDesignPaper"] = new SolidColorBrush(bgColor);
+        res["MaterialDesignCardBackground"] = new SolidColorBrush(AdjustBrightness(bgColor, 10));
+        res["MaterialDesignToolBarBackground"] = new SolidColorBrush(AdjustBrightness(bgColor, -5));
+        res["PrimaryHueMidBrush"] = new SolidColorBrush(accentColor);
+        res["PrimaryHueMidForegroundBrush"] = new SolidColorBrush(Colors.White);
+        res["SecondaryHueMidBrush"] = new SolidColorBrush(accentColor);
+        res["ThemeTitleBar"] = new SolidColorBrush(AdjustBrightness(bgColor, -5));
+        res["ThemeSidebar"] = new SolidColorBrush(AdjustBrightness(bgColor, 10));
+        res["ThemeOutput"] = new SolidColorBrush(AdjustBrightness(bgColor, -5));
+        res["ThemeAccent"] = new SolidColorBrush(accentColor);
+    }
+
+    private static Color AdjustBrightness(Color color, int amount)
+    {
+        return Color.FromRgb(
+            (byte)Math.Clamp(color.R + amount, 0, 255),
+            (byte)Math.Clamp(color.G + amount, 0, 255),
+            (byte)Math.Clamp(color.B + amount, 0, 255));
+    }
+
+    private static Color ParseColor(string hex)
+    {
+        try
+        {
+            return (Color)ColorConverter.ConvertFromString(hex);
+        }
+        catch
+        {
+            return Colors.Black;
+        }
     }
 
     private void LoadProjects()
@@ -47,7 +98,34 @@ public partial class MainViewModel : ObservableObject
 
     private void SaveProjects()
     {
-        _settingsService.Save(new AppSettings { Projects = [.. Projects] });
+        var settings = _settingsService.Load();
+        settings.Projects = [.. Projects];
+        settings.BackgroundColor = _backgroundColorHex;
+        settings.AccentColor = _accentColorHex;
+        _settingsService.Save(settings);
+    }
+
+    [RelayCommand]
+    private void OpenSettings()
+    {
+        var dialog = new SettingsDialog
+        {
+            Owner = Application.Current.MainWindow,
+            BackgroundColorHex = _backgroundColorHex,
+            AccentColorHex = _accentColorHex,
+            OnThemeChanged = (bgHex, accentHex) =>
+            {
+                _backgroundColorHex = bgHex;
+                _accentColorHex = accentHex;
+                ApplyTheme();
+            }
+        };
+
+        dialog.ShowDialog();
+        // ダイアログ閉じたら最終状態を保存
+        _backgroundColorHex = dialog.BackgroundColorHex;
+        _accentColorHex = dialog.AccentColorHex;
+        SaveProjects();
     }
 
     [RelayCommand]

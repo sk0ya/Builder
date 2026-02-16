@@ -7,6 +7,8 @@ namespace Builder.Services;
 public class AppSettings
 {
     public List<ProjectEntry> Projects { get; set; } = [];
+    public string BackgroundColor { get; set; } = "#1E1E1E";
+    public string AccentColor { get; set; } = "#4FC3F7";
 }
 
 public class SettingsService
