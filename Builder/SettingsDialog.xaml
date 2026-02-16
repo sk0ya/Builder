@@ -4,6 +4,8 @@
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Title="設定"
         Width="320" SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"

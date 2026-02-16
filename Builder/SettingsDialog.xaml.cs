@@ -26,6 +26,7 @@ public partial class SettingsDialog : Window
             UpdatePreview(BgColorPreview, BackgroundColorHex);
             UpdatePreview(AccentColorPreview, AccentColorHex);
         };
+        Deactivated += (_, _) => Close();
     }
 
     private void BgSample_Click(object sender, MouseButtonEventArgs e)

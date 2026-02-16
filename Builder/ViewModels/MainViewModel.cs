@@ -121,11 +121,13 @@ public partial class MainViewModel : ObservableObject
             }
         };
 
-        dialog.ShowDialog();
-        // ダイアログ閉じたら最終状態を保存
-        _backgroundColorHex = dialog.BackgroundColorHex;
-        _accentColorHex = dialog.AccentColorHex;
-        SaveProjects();
+        dialog.Closed += (_, _) =>
+        {
+            _backgroundColorHex = dialog.BackgroundColorHex;
+            _accentColorHex = dialog.AccentColorHex;
+            SaveProjects();
+        };
+        dialog.Show();
     }
 
     [RelayCommand]
