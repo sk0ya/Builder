@@ -44,13 +44,13 @@
                     Style="{StaticResource MaterialDesignToolButton}"
                     Height="28" Padding="8,0" ToolTip="設定">
                 <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="Cog" Width="14" Height="14" Foreground="#999" />
-                    <TextBlock Text="設定" FontSize="11" Foreground="#999" Margin="4,0,0,0" VerticalAlignment="Center" />
+                    <materialDesign:PackIcon Kind="Cog" Width="14" Height="14" Foreground="{DynamicResource ThemeSubText}" />
+                    <TextBlock Text="設定" FontSize="11" Foreground="{DynamicResource ThemeSubText}" Margin="4,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
 
             <!-- Title -->
-            <TextBlock Grid.Column="1" Text="Builder" FontSize="11" Foreground="#666"
+            <TextBlock Grid.Column="1" Text="Builder" FontSize="11" Foreground="{DynamicResource ThemeMutedText}"
                        HorizontalAlignment="Center" VerticalAlignment="Center"
                        IsHitTestVisible="False" />
 
@@ -58,15 +58,15 @@
             <StackPanel Grid.Column="2" Orientation="Horizontal">
                 <Button Click="MinimizeButton_Click" Style="{StaticResource MaterialDesignToolButton}"
                         Width="40" Height="28" ToolTip="最小化">
-                    <materialDesign:PackIcon Kind="WindowMinimize" Width="13" Height="13" Foreground="#999" />
+                    <materialDesign:PackIcon Kind="WindowMinimize" Width="13" Height="13" Foreground="{DynamicResource ThemeSubText}" />
                 </Button>
                 <Button Click="MaximizeButton_Click" Style="{StaticResource MaterialDesignToolButton}"
                         Width="40" Height="28" ToolTip="最大化">
-                    <materialDesign:PackIcon x:Name="MaximizeIcon" Kind="WindowMaximize" Width="13" Height="13" Foreground="#999" />
+                    <materialDesign:PackIcon x:Name="MaximizeIcon" Kind="WindowMaximize" Width="13" Height="13" Foreground="{DynamicResource ThemeSubText}" />
                 </Button>
                 <Button Click="CloseButton_Click" Style="{StaticResource MaterialDesignToolButton}"
                         Width="40" Height="28" ToolTip="閉じる">
-                    <materialDesign:PackIcon Kind="WindowClose" Width="13" Height="13" Foreground="#999" />
+                    <materialDesign:PackIcon Kind="WindowClose" Width="13" Height="13" Foreground="{DynamicResource ThemeSubText}" />
                 </Button>
             </StackPanel>
         </Grid>
@@ -83,17 +83,17 @@
             <DockPanel Grid.Column="0" Background="{DynamicResource ThemeSidebar}">
                 <DockPanel DockPanel.Dock="Top" Margin="10,8">
                     <TextBlock Text="プロジェクト" FontSize="13" FontWeight="Medium"
-                               Foreground="#999" VerticalAlignment="Center" />
+                               Foreground="{DynamicResource ThemeSubText}" VerticalAlignment="Center" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Style="{StaticResource MaterialDesignToolButton}"
                                 Command="{Binding AddProjectCommand}"
                                 ToolTip="追加" Width="26" Height="26">
-                            <materialDesign:PackIcon Kind="Plus" Width="16" Height="16" Foreground="#999" />
+                            <materialDesign:PackIcon Kind="Plus" Width="16" Height="16" Foreground="{DynamicResource ThemeSubText}" />
                         </Button>
                         <Button Style="{StaticResource MaterialDesignToolButton}"
                                 Command="{Binding RemoveProjectCommand}"
                                 ToolTip="削除" Width="26" Height="26" Margin="2,0,0,0">
-                            <materialDesign:PackIcon Kind="Minus" Width="16" Height="16" Foreground="#999" />
+                            <materialDesign:PackIcon Kind="Minus" Width="16" Height="16" Foreground="{DynamicResource ThemeSubText}" />
                         </Button>
                     </StackPanel>
                 </DockPanel>
@@ -114,6 +114,7 @@
                             <Setter Property="Padding" Value="10,6" />
                             <Setter Property="Margin" Value="0,1" />
                             <Setter Property="AllowDrop" Value="True" />
+                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
                             <Style.Triggers>
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter Property="Foreground" Value="{DynamicResource ThemeAccent}" />
@@ -126,14 +127,14 @@
                             <StackPanel>
                                 <TextBlock Text="{Binding Name}" FontSize="13" />
                                 <TextBlock Text="{Binding FolderPath}" FontSize="10.5"
-                                           Foreground="#666" TextTrimming="CharacterEllipsis" />
+                                           Foreground="{DynamicResource ThemeMutedText}" TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
             </DockPanel>
 
-            <GridSplitter Grid.Column="1" Width="1" Background="#333" />
+            <GridSplitter Grid.Column="1" Width="1" Background="{DynamicResource ThemeSplitter}" />
 
             <!-- Right -->
             <Grid Grid.Column="2">
@@ -158,6 +159,7 @@
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                  materialDesign:HintAssist.Hint="ビルドコマンド"
                                  materialDesign:HintAssist.IsFloating="True"
+                                 Foreground="{DynamicResource MaterialDesignBody}"
                                  FontSize="13" Margin="0,0,0,6"
                                  LostFocus="OnSettingsFieldLostFocus" />
 
@@ -166,6 +168,7 @@
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                  materialDesign:HintAssist.Hint="起動コマンド"
                                  materialDesign:HintAssist.IsFloating="True"
+                                 Foreground="{DynamicResource MaterialDesignBody}"
                                  FontSize="13" Margin="0,0,0,6"
                                  LostFocus="OnSettingsFieldLostFocus" />
                     </Grid>
@@ -209,13 +212,13 @@
                         <Button Command="{Binding OpenFolderCommand}"
                                 Style="{StaticResource MaterialDesignToolButton}"
                                 ToolTip="フォルダを開く" Width="28" Height="28">
-                            <materialDesign:PackIcon Kind="FolderOpen" Width="15" Height="15" Foreground="#888" />
+                            <materialDesign:PackIcon Kind="FolderOpen" Width="15" Height="15" Foreground="{DynamicResource ThemeSubText}" />
                         </Button>
 
                         <Button Command="{Binding AddActionCommand}"
                                 Style="{StaticResource MaterialDesignToolButton}"
                                 ToolTip="アクション追加" Width="28" Height="28" Margin="2,0,0,0">
-                            <materialDesign:PackIcon Kind="Plus" Width="15" Height="15" Foreground="#888" />
+                            <materialDesign:PackIcon Kind="Plus" Width="15" Height="15" Foreground="{DynamicResource ThemeSubText}" />
                         </Button>
 
                         <ItemsControl ItemsSource="{Binding SelectedProject.Actions}" Margin="4,0,0,0">
@@ -256,13 +259,13 @@
 
                     </StackPanel>
 
-                    <Separator Background="#333" Margin="0,0,0,0" />
+                    <Separator Background="{DynamicResource ThemeSplitter}" Margin="0,0,0,0" />
                 </StackPanel>
 
                 <!-- Output Log -->
                 <DockPanel Grid.Row="1" Margin="14,4,14,10">
                     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
-                        <TextBlock Text="出力" FontSize="12" Foreground="#666"
+                        <TextBlock Text="出力" FontSize="12" Foreground="{DynamicResource ThemeMutedText}"
                                    VerticalAlignment="Center" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
@@ -278,7 +281,7 @@
                             <Button Style="{StaticResource MaterialDesignToolButton}"
                                     Command="{Binding ClearLogCommand}"
                                     ToolTip="クリア" Width="22" Height="22">
-                                <materialDesign:PackIcon Kind="DeleteSweep" Width="13" Height="13" Foreground="#666" />
+                                <materialDesign:PackIcon Kind="DeleteSweep" Width="13" Height="13" Foreground="{DynamicResource ThemeMutedText}" />
                             </Button>
                         </StackPanel>
                     </DockPanel>
@@ -292,8 +295,8 @@
                              TextWrapping="Wrap"
                              AcceptsReturn="True"
                              Background="{DynamicResource ThemeOutput}"
-                             Foreground="#CCC"
-                             BorderBrush="#333"
+                             Foreground="{DynamicResource ThemeOutputForeground}"
+                             BorderBrush="{DynamicResource ThemeBorder}"
                              BorderThickness="1"
                              Padding="8,6" />
                 </DockPanel>

@@ -6,6 +6,7 @@ using Builder.Models;
 using Builder.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using MaterialDesignThemes.Wpf;
 
 namespace Builder.ViewModels;
 
@@ -54,18 +55,37 @@ public partial class MainViewModel : ObservableObject
     {
         var bgColor = ParseColor(_backgroundColorHex);
         var accentColor = ParseColor(_accentColorHex);
+        var isLight = IsLightColor(bgColor);
+
+        // Switch MaterialDesign base theme (Light/Dark) so all internal templates update
+        var paletteHelper = new PaletteHelper();
+        var theme = paletteHelper.GetTheme();
+        theme.SetBaseTheme(isLight ? BaseTheme.Light : BaseTheme.Dark);
+        paletteHelper.SetTheme(theme);
 
         var res = Application.Current.Resources;
         res["MaterialDesignPaper"] = new SolidColorBrush(bgColor);
-        res["MaterialDesignCardBackground"] = new SolidColorBrush(AdjustBrightness(bgColor, 10));
-        res["MaterialDesignToolBarBackground"] = new SolidColorBrush(AdjustBrightness(bgColor, -5));
+        res["MaterialDesignCardBackground"] = new SolidColorBrush(AdjustBrightness(bgColor, isLight ? -10 : 10));
+        res["MaterialDesignToolBarBackground"] = new SolidColorBrush(AdjustBrightness(bgColor, isLight ? -8 : -5));
+        res["MaterialDesignBody"] = new SolidColorBrush(isLight ? Color.FromRgb(0x21, 0x21, 0x21) : Color.FromRgb(0xDD, 0xDD, 0xDD));
         res["PrimaryHueMidBrush"] = new SolidColorBrush(accentColor);
         res["PrimaryHueMidForegroundBrush"] = new SolidColorBrush(Colors.White);
         res["SecondaryHueMidBrush"] = new SolidColorBrush(accentColor);
-        res["ThemeTitleBar"] = new SolidColorBrush(AdjustBrightness(bgColor, -5));
-        res["ThemeSidebar"] = new SolidColorBrush(AdjustBrightness(bgColor, 10));
-        res["ThemeOutput"] = new SolidColorBrush(AdjustBrightness(bgColor, -5));
+        res["ThemeTitleBar"] = new SolidColorBrush(AdjustBrightness(bgColor, isLight ? -8 : -5));
+        res["ThemeSidebar"] = new SolidColorBrush(AdjustBrightness(bgColor, isLight ? -10 : 10));
+        res["ThemeOutput"] = new SolidColorBrush(AdjustBrightness(bgColor, isLight ? -8 : -5));
         res["ThemeAccent"] = new SolidColorBrush(accentColor);
+        res["ThemeSubText"] = new SolidColorBrush(isLight ? Color.FromRgb(0x66, 0x66, 0x66) : Color.FromRgb(0x99, 0x99, 0x99));
+        res["ThemeMutedText"] = new SolidColorBrush(isLight ? Color.FromRgb(0x88, 0x88, 0x88) : Color.FromRgb(0x66, 0x66, 0x66));
+        res["ThemeOutputForeground"] = new SolidColorBrush(isLight ? Color.FromRgb(0x33, 0x33, 0x33) : Color.FromRgb(0xCC, 0xCC, 0xCC));
+        res["ThemeBorder"] = new SolidColorBrush(isLight ? Color.FromRgb(0xCC, 0xCC, 0xCC) : Color.FromRgb(0x33, 0x33, 0x33));
+        res["ThemeSplitter"] = new SolidColorBrush(isLight ? Color.FromRgb(0xDD, 0xDD, 0xDD) : Color.FromRgb(0x33, 0x33, 0x33));
+    }
+
+    private static bool IsLightColor(Color color)
+    {
+        var luminance = (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255.0;
+        return luminance > 0.5;
     }
 
     private static Color AdjustBrightness(Color color, int amount)

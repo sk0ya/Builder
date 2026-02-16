@@ -34,6 +34,26 @@
                     MouseLeftButtonDown="BgSample_Click" Tag="#2B2B2B" BorderBrush="#444" BorderThickness="1" />
             <Border Width="32" Height="32" CornerRadius="3" Background="#263238" Margin="2" Cursor="Hand"
                     MouseLeftButtonDown="BgSample_Click" Tag="#263238" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#1B2838" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#1B2838" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#2D1B2E" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#2D1B2E" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#FFFFFF" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#FFFFFF" BorderBrush="#CCC" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#FAFAFA" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#FAFAFA" BorderBrush="#CCC" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#F5F5F5" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#F5F5F5" BorderBrush="#CCC" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#ECEFF1" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#ECEFF1" BorderBrush="#CCC" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#F0F4F8" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#F0F4F8" BorderBrush="#CCC" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#FFF8E1" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#FFF8E1" BorderBrush="#CCC" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#F3E5F5" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#F3E5F5" BorderBrush="#CCC" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#E8F5E9" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#E8F5E9" BorderBrush="#CCC" BorderThickness="1" />
         </WrapPanel>
         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
             <Border x:Name="BgColorPreview" Width="32" Height="32"
@@ -51,16 +71,52 @@
         <WrapPanel>
             <Border Width="32" Height="32" CornerRadius="3" Background="#4FC3F7" Margin="2" Cursor="Hand"
                     MouseLeftButtonDown="AccentSample_Click" Tag="#4FC3F7" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#42A5F5" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#42A5F5" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#5C6BC0" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#5C6BC0" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#26C6DA" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#26C6DA" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#7986CB" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#7986CB" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#0097A7" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#0097A7" BorderBrush="#444" BorderThickness="1" />
             <Border Width="32" Height="32" CornerRadius="3" Background="#81C784" Margin="2" Cursor="Hand"
                     MouseLeftButtonDown="AccentSample_Click" Tag="#81C784" BorderBrush="#444" BorderThickness="1" />
-            <Border Width="32" Height="32" CornerRadius="3" Background="#FF8A65" Margin="2" Cursor="Hand"
-                    MouseLeftButtonDown="AccentSample_Click" Tag="#FF8A65" BorderBrush="#444" BorderThickness="1" />
-            <Border Width="32" Height="32" CornerRadius="3" Background="#CE93D8" Margin="2" Cursor="Hand"
-                    MouseLeftButtonDown="AccentSample_Click" Tag="#CE93D8" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#66BB6A" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#66BB6A" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#26A69A" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#26A69A" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#AED581" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#AED581" BorderBrush="#444" BorderThickness="1" />
             <Border Width="32" Height="32" CornerRadius="3" Background="#FFD54F" Margin="2" Cursor="Hand"
                     MouseLeftButtonDown="AccentSample_Click" Tag="#FFD54F" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#FFCA28" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#FFCA28" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#FF8A65" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#FF8A65" BorderBrush="#444" BorderThickness="1" />
             <Border Width="32" Height="32" CornerRadius="3" Background="#F06292" Margin="2" Cursor="Hand"
                     MouseLeftButtonDown="AccentSample_Click" Tag="#F06292" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#EF5350" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#EF5350" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#EC407A" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#EC407A" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#FF7043" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#FF7043" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#E91E63" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#E91E63" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#CE93D8" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#CE93D8" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#AB47BC" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#AB47BC" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#7E57C2" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#7E57C2" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#B0BEC5" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#B0BEC5" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#FFAB91" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#FFAB91" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#F5F5F5" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#F5F5F5" BorderBrush="#444" BorderThickness="1" />
         </WrapPanel>
         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
             <Border x:Name="AccentColorPreview" Width="32" Height="32"
