@@ -1,0 +1,219 @@
+<Window x:Class="Builder.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:vm="clr-namespace:Builder.ViewModels"
+        Title="Builder - プロジェクト管理"
+        Width="1000" Height="650"
+        MinWidth="800" MinHeight="500"
+        Style="{StaticResource MaterialDesignWindow}"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        Background="{DynamicResource MaterialDesignPaper}"
+        FontFamily="{materialDesign:MaterialDesignFont}">
+
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280" MinWidth="200" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Left: Project List -->
+        <DockPanel Grid.Column="0" Margin="8">
+            <TextBlock DockPanel.Dock="Top" Text="プロジェクト"
+                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                       Margin="8,8,8,4" />
+
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="8,4">
+                <Button Style="{StaticResource MaterialDesignFlatButton}"
+                        Command="{Binding AddProjectCommand}"
+                        ToolTip="プロジェクト追加">
+                    <materialDesign:PackIcon Kind="FolderPlus" />
+                </Button>
+                <Button Style="{StaticResource MaterialDesignFlatButton}"
+                        Command="{Binding RemoveProjectCommand}"
+                        Foreground="IndianRed"
+                        ToolTip="プロジェクト削除">
+                    <materialDesign:PackIcon Kind="Delete" />
+                </Button>
+            </StackPanel>
+
+            <ListBox ItemsSource="{Binding Projects}"
+                     SelectedItem="{Binding SelectedProject}"
+                     Margin="4"
+                     Style="{StaticResource MaterialDesignListBox}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="4">
+                            <TextBlock Text="{Binding Name}"
+                                       Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
+                            <TextBlock Text="{Binding FolderPath}"
+                                       Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                       Foreground="Gray"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxWidth="230" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <GridSplitter Grid.Column="1" Width="3" HorizontalAlignment="Center"
+                      VerticalAlignment="Stretch" Background="LightGray" />
+
+        <!-- Right: Details & Output -->
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Detail Panel -->
+            <materialDesign:Card Grid.Row="0" Margin="8" Padding="16"
+                                 Visibility="{Binding HasSelectedProject, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="プロジェクト設定"
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Margin="0,0,0,12" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="名前"
+                                   VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <TextBox Grid.Row="0" Grid.Column="1"
+                                 Text="{Binding SelectedProject.Name, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 Margin="0,0,0,8"
+                                 materialDesign:HintAssist.Hint="プロジェクト名" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="フォルダ"
+                                   VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <TextBox Grid.Row="1" Grid.Column="1"
+                                 Text="{Binding SelectedProject.FolderPath, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 Margin="0,0,0,8"
+                                 materialDesign:HintAssist.Hint="フォルダパス" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="ビルド"
+                                   VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <TextBox Grid.Row="2" Grid.Column="1"
+                                 Text="{Binding SelectedProject.BuildCommand, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 Margin="0,0,0,8"
+                                 materialDesign:HintAssist.Hint="例: dotnet build" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="起動"
+                                   VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <TextBox Grid.Row="3" Grid.Column="1"
+                                 Text="{Binding SelectedProject.LaunchCommand, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 Margin="0,0,0,8"
+                                 materialDesign:HintAssist.Hint="例: dotnet run" />
+                    </Grid>
+
+                    <!-- Action Buttons -->
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Command="{Binding GitPullCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Margin="0,0,8,0"
+                                materialDesign:ButtonAssist.CornerRadius="4">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Git" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <TextBlock Text="Git Pull" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding BuildCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Margin="0,0,8,0"
+                                materialDesign:ButtonAssist.CornerRadius="4">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Hammer" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <TextBlock Text="ビルド" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding LaunchCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Background="Teal" BorderBrush="Teal"
+                                Margin="0,0,8,0"
+                                materialDesign:ButtonAssist.CornerRadius="4">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Play" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <TextBlock Text="起動" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding OpenFolderCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Margin="0,0,8,0"
+                                materialDesign:ButtonAssist.CornerRadius="4">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FolderOpen" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <TextBlock Text="フォルダ" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding SaveSettingsCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                materialDesign:ButtonAssist.CornerRadius="4">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ContentSave" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <TextBlock Text="保存" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- Output Log -->
+            <DockPanel Grid.Row="1" Margin="8,0,8,8">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
+                    <TextBlock Text="出力ログ"
+                               Style="{StaticResource MaterialDesignSubtitle1TextBlock}"
+                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Button Style="{StaticResource MaterialDesignFlatButton}"
+                            Command="{Binding ClearLogCommand}"
+                            ToolTip="ログクリア" Padding="4">
+                        <materialDesign:PackIcon Kind="DeleteSweep" />
+                    </Button>
+                    <Button Style="{StaticResource MaterialDesignFlatButton}"
+                            Command="{Binding CancelOperationCommand}"
+                            ToolTip="キャンセル" Padding="4"
+                            Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <materialDesign:PackIcon Kind="Cancel" Foreground="Red" />
+                    </Button>
+                    <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
+                                 IsIndeterminate="True"
+                                 Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                 Width="20" Height="20" Margin="8,0,0,0" />
+                </StackPanel>
+
+                <TextBox Text="{Binding OutputLog, Mode=OneWay}"
+                         IsReadOnly="True"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto"
+                         FontFamily="Consolas"
+                         FontSize="12"
+                         TextWrapping="Wrap"
+                         AcceptsReturn="True"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+            </DockPanel>
+        </Grid>
+    </Grid>
+</Window>
