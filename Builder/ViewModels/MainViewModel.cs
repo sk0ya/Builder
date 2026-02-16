@@ -160,6 +160,95 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    private void AddAction()
+    {
+        if (SelectedProject == null) return;
+
+        var dialog = new ActionEditDialog { Owner = Application.Current.MainWindow };
+        if (dialog.ShowDialog() == true)
+        {
+            var action = new ProjectAction
+            {
+                Name = dialog.ActionName,
+                Script = dialog.Script
+            };
+            SelectedProject.Actions.Add(action);
+            OnPropertyChanged(nameof(SelectedProject));
+            SaveProjects();
+        }
+    }
+
+    [RelayCommand]
+    private async Task RunAction(ProjectAction action)
+    {
+        if (SelectedProject == null || action == null) return;
+
+        if (string.IsNullOrWhiteSpace(action.Script))
+        {
+            AppendLog($"[エラー] アクション「{action.Name}」のスクリプトが空です。");
+            return;
+        }
+
+        IsBusy = true;
+        _cts = new CancellationTokenSource();
+        AppendLog($"> [アクション] {action.Name}");
+
+        try
+        {
+            await _processService.RunPwshScriptAsync(SelectedProject.FolderPath, action.Script, line =>
+            {
+                Application.Current.Dispatcher.Invoke(() => AppendLog(line));
+            }, _cts.Token);
+
+            AppendLog("[完了]");
+        }
+        catch (OperationCanceledException)
+        {
+            AppendLog("[キャンセル]");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"[エラー] {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+            _cts = null;
+        }
+    }
+
+    [RelayCommand]
+    private void EditAction(ProjectAction action)
+    {
+        if (SelectedProject == null || action == null) return;
+
+        var dialog = new ActionEditDialog
+        {
+            Owner = Application.Current.MainWindow,
+            ActionName = action.Name,
+            Script = action.Script
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            action.Name = dialog.ActionName;
+            action.Script = dialog.Script;
+            OnPropertyChanged(nameof(SelectedProject));
+            SaveProjects();
+        }
+    }
+
+    [RelayCommand]
+    private void DeleteAction(ProjectAction action)
+    {
+        if (SelectedProject == null || action == null) return;
+
+        SelectedProject.Actions.Remove(action);
+        OnPropertyChanged(nameof(SelectedProject));
+        SaveProjects();
+    }
+
     private async Task RunCommandAsync(string workingDir, string command)
     {
         IsBusy = true;
