@@ -1,0 +1,75 @@
+<Window x:Class="Builder.SettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="設定"
+        Width="320" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        Background="{DynamicResource MaterialDesignPaper}"
+        FontFamily="{materialDesign:MaterialDesignFont}">
+
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="ApplicationCommands.Close" />
+    </Window.InputBindings>
+    <Window.CommandBindings>
+        <CommandBinding Command="ApplicationCommands.Close" Executed="CloseCommand_Executed" />
+    </Window.CommandBindings>
+
+    <StackPanel Margin="20">
+        <TextBlock Text="背景色" FontSize="13" Foreground="#999" Margin="0,0,0,8" />
+        <WrapPanel>
+            <Border Width="32" Height="32" CornerRadius="3" Background="#1E1E1E" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#1E1E1E" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#252526" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#252526" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#1A1A2E" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#1A1A2E" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#0D1117" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#0D1117" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#2B2B2B" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#2B2B2B" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#263238" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="BgSample_Click" Tag="#263238" BorderBrush="#444" BorderThickness="1" />
+        </WrapPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+            <Border x:Name="BgColorPreview" Width="32" Height="32"
+                    CornerRadius="3" BorderBrush="#555" BorderThickness="1"
+                    Background="#1E1E1E" Margin="0,0,8,0" />
+            <TextBox x:Name="BgHexTextBox" Text="#1E1E1E"
+                     Width="100" FontSize="13" FontFamily="Consolas"
+                     MaxLength="7" VerticalAlignment="Center"
+                     materialDesign:HintAssist.Hint="Hex"
+                     materialDesign:TextFieldAssist.CharacterCounterVisibility="Collapsed"
+                     TextChanged="BgHexTextBox_TextChanged" />
+        </StackPanel>
+
+        <TextBlock Text="アクセントカラー" FontSize="13" Foreground="#999" Margin="0,16,0,8" />
+        <WrapPanel>
+            <Border Width="32" Height="32" CornerRadius="3" Background="#4FC3F7" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#4FC3F7" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#81C784" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#81C784" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#FF8A65" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#FF8A65" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#CE93D8" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#CE93D8" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#FFD54F" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#FFD54F" BorderBrush="#444" BorderThickness="1" />
+            <Border Width="32" Height="32" CornerRadius="3" Background="#F06292" Margin="2" Cursor="Hand"
+                    MouseLeftButtonDown="AccentSample_Click" Tag="#F06292" BorderBrush="#444" BorderThickness="1" />
+        </WrapPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+            <Border x:Name="AccentColorPreview" Width="32" Height="32"
+                    CornerRadius="3" BorderBrush="#555" BorderThickness="1"
+                    Background="#4FC3F7" Margin="0,0,8,0" />
+            <TextBox x:Name="AccentHexTextBox" Text="#4FC3F7"
+                     Width="100" FontSize="13" FontFamily="Consolas"
+                     MaxLength="7" VerticalAlignment="Center"
+                     materialDesign:HintAssist.Hint="Hex"
+                     materialDesign:TextFieldAssist.CharacterCounterVisibility="Collapsed"
+                     TextChanged="AccentHexTextBox_TextChanged" />
+        </StackPanel>
+    </StackPanel>
+</Window>
