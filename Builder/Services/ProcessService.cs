@@ -62,6 +62,22 @@ public class ProcessService
         Process.Start(psi);
     }
 
+    public void LaunchPwshScriptDetached(string workingDirectory, string script)
+    {
+        var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = "pwsh",
+            Arguments = $"-ExecutionPolicy Bypass -EncodedCommand {encoded}",
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            CreateNoWindow = false
+        };
+
+        Process.Start(psi);
+    }
+
     public async Task RunPwshScriptAsync(string workingDirectory, string script, Action<string> onOutput, CancellationToken ct = default)
     {
         var tempFile = Path.Combine(Path.GetTempPath(), $"builder_{Guid.NewGuid():N}.ps1");

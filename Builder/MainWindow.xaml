@@ -25,6 +25,7 @@
         <vm:MainViewModel />
     </Window.DataContext>
 
+    <materialDesign:DialogHost Identifier="RootDialog" DialogTheme="Inherit" CloseOnClickAway="True">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -303,4 +304,5 @@
             </Grid>
         </Grid>
     </Grid>
+    </materialDesign:DialogHost>
 </Window>

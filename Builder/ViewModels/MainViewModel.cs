@@ -261,17 +261,20 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void AddAction()
+    private async Task AddAction()
     {
         if (SelectedProject == null) return;
 
-        var dialog = new ActionEditDialog { Owner = Application.Current.MainWindow };
-        if (dialog.ShowDialog() == true)
+        var view = new ActionEditDialog();
+        var result = await DialogHost.Show(view, "RootDialog");
+
+        if (result is true)
         {
             var action = new ProjectAction
             {
-                Name = dialog.ActionName,
-                Script = dialog.Script
+                Name = view.ActionName,
+                Script = view.Script,
+                LaunchOnly = view.LaunchOnly
             };
             SelectedProject.Actions.Add(action);
             OnPropertyChanged(nameof(SelectedProject));
@@ -287,6 +290,20 @@ public partial class MainViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(action.Script))
         {
             AppendLog($"[エラー] アクション「{action.Name}」のスクリプトが空です。");
+            return;
+        }
+
+        if (action.LaunchOnly)
+        {
+            try
+            {
+                _processService.LaunchPwshScriptDetached(SelectedProject.FolderPath, action.Script);
+                AppendLog($"[起動] {action.Name}");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[エラー] {ex.Message}");
+            }
             return;
         }
 
@@ -319,21 +336,24 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void EditAction(ProjectAction action)
+    private async Task EditAction(ProjectAction action)
     {
         if (SelectedProject == null || action == null) return;
 
-        var dialog = new ActionEditDialog
+        var view = new ActionEditDialog
         {
-            Owner = Application.Current.MainWindow,
             ActionName = action.Name,
-            Script = action.Script
+            Script = action.Script,
+            LaunchOnly = action.LaunchOnly
         };
 
-        if (dialog.ShowDialog() == true)
+        var result = await DialogHost.Show(view, "RootDialog");
+
+        if (result is true)
         {
-            action.Name = dialog.ActionName;
-            action.Script = dialog.Script;
+            action.Name = view.ActionName;
+            action.Script = view.Script;
+            action.LaunchOnly = view.LaunchOnly;
             OnPropertyChanged(nameof(SelectedProject));
             SaveProjects();
         }
