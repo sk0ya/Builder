@@ -40,6 +40,7 @@ public class ProcessService
         process.BeginErrorReadLine();
 
         await process.WaitForExitAsync(ct);
+        process.WaitForExit(); // 非同期出力リーダーの完全なドレインを待つ
 
         if (process.ExitCode != 0)
             onOutput($"[Process exited with code {process.ExitCode}]");
@@ -114,6 +115,7 @@ public class ProcessService
             process.BeginErrorReadLine();
 
             await process.WaitForExitAsync(ct);
+            process.WaitForExit(); // 非同期出力リーダーの完全なドレインを待つ
 
             if (process.ExitCode != 0)
                 onOutput($"[Process exited with code {process.ExitCode}]");
