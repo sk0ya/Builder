@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Windows;
 using System.Windows.Media;
 using Builder.Models;
@@ -169,6 +171,116 @@ public partial class MainViewModel : ObservableObject
             Projects.Add(entry);
             SelectedProject = entry;
             SaveProjects();
+        }
+    }
+
+    [RelayCommand]
+    private async Task AddProjectFromGithub()
+    {
+        var settings = _settingsService.Load();
+        var view = new GitCloneDialog(settings.LastCloneParentFolder);
+        var result = await DialogHost.Show(view, "RootDialog");
+        if (result is not true) return;
+
+        var url = view.RepoUrl;
+        var destPath = view.DestinationPath;
+
+        // 親フォルダを保存
+        settings.LastCloneParentFolder = view.ParentFolder;
+        _settingsService.Save(settings);
+        var projectName = Path.GetFileName(destPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        if (string.IsNullOrEmpty(projectName))
+            projectName = GitCloneDialog.ExtractRepoName(url);
+
+        var parentDir = Path.GetDirectoryName(destPath);
+        if (!string.IsNullOrEmpty(parentDir))
+        {
+            try { Directory.CreateDirectory(parentDir); }
+            catch (Exception ex)
+            {
+                AppendLog($"[エラー] フォルダの作成に失敗しました: {ex.Message}");
+                return;
+            }
+        }
+
+        await RunGitCloneAsync(url, destPath, string.IsNullOrEmpty(projectName) ? "Repository" : projectName);
+    }
+
+    private async Task RunGitCloneAsync(string url, string destPath, string projectName)
+    {
+        IsBusy = true;
+        _cts = new CancellationTokenSource();
+        AppendLog($"> git clone {url}");
+        AppendLog($"  → {destPath}");
+
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "git",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetDirectoryName(destPath) ?? Environment.CurrentDirectory,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8
+            };
+            psi.ArgumentList.Add("clone");
+            psi.ArgumentList.Add("--progress");
+            psi.ArgumentList.Add(url);
+            psi.ArgumentList.Add(destPath);
+
+            using var process = new Process { StartInfo = psi };
+
+            process.OutputDataReceived += (_, e) =>
+            {
+                if (e.Data != null) Application.Current.Dispatcher.Invoke(() => AppendLog(e.Data));
+            };
+            process.ErrorDataReceived += (_, e) =>
+            {
+                if (e.Data != null) Application.Current.Dispatcher.Invoke(() => AppendLog(e.Data));
+            };
+
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            await process.WaitForExitAsync(_cts.Token);
+            process.WaitForExit();
+
+            if (process.ExitCode == 0 && Directory.Exists(destPath))
+            {
+                var entry = new ProjectEntry
+                {
+                    Name = projectName,
+                    FolderPath = destPath
+                };
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    Projects.Add(entry);
+                    SelectedProject = entry;
+                    SaveProjects();
+                });
+                AppendLog($"[完了] プロジェクト「{projectName}」を追加しました。");
+            }
+            else if (process.ExitCode != 0)
+            {
+                AppendLog($"[エラー] git clone が失敗しました (終了コード: {process.ExitCode})");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            AppendLog("[キャンセル]");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"[エラー] {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+            _cts = null;
         }
     }
 

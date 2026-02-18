@@ -87,8 +87,13 @@
                                Foreground="{DynamicResource ThemeSubText}" VerticalAlignment="Center" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Style="{StaticResource MaterialDesignToolButton}"
+                                Command="{Binding AddProjectFromGithubCommand}"
+                                ToolTip="GitHubからクローン" Width="26" Height="26">
+                            <materialDesign:PackIcon Kind="Github" Width="15" Height="15" Foreground="{DynamicResource ThemeSubText}" />
+                        </Button>
+                        <Button Style="{StaticResource MaterialDesignToolButton}"
                                 Command="{Binding AddProjectCommand}"
-                                ToolTip="追加" Width="26" Height="26">
+                                ToolTip="フォルダから追加" Width="26" Height="26" Margin="2,0,0,0">
                             <materialDesign:PackIcon Kind="Plus" Width="16" Height="16" Foreground="{DynamicResource ThemeSubText}" />
                         </Button>
                         <Button Style="{StaticResource MaterialDesignToolButton}"
