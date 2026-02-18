@@ -287,7 +287,8 @@
                         </StackPanel>
                     </DockPanel>
 
-                    <TextBox Text="{Binding OutputLog, Mode=OneWay}"
+                    <TextBox x:Name="OutputLogTextBox"
+                             Text="{Binding OutputLog, Mode=OneWay}"
                              IsReadOnly="True"
                              VerticalScrollBarVisibility="Auto"
                              HorizontalScrollBarVisibility="Auto"
@@ -299,7 +300,8 @@
                              Foreground="{DynamicResource ThemeOutputForeground}"
                              BorderBrush="{DynamicResource ThemeBorder}"
                              BorderThickness="1"
-                             Padding="8,6" />
+                             Padding="8,6"
+                             TextChanged="OutputLogTextBox_TextChanged" />
                 </DockPanel>
             </Grid>
         </Grid>

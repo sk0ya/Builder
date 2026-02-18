@@ -15,6 +15,11 @@ public partial class MainWindow : Window
         InitializeComponent();
     }
 
+    private void OutputLogTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        OutputLogTextBox.ScrollToEnd();
+    }
+
     private void OnSettingsFieldLostFocus(object sender, RoutedEventArgs e)
     {
         if (DataContext is MainViewModel vm)
