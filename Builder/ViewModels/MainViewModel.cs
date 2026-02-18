@@ -168,6 +168,7 @@ public partial class MainViewModel : ObservableObject
                 Name = Path.GetFileName(folderPath) ?? folderPath,
                 FolderPath = folderPath
             };
+            ProjectDetector.DetectAndApply(entry);
             Projects.Add(entry);
             SelectedProject = entry;
             SaveProjects();
@@ -256,6 +257,7 @@ public partial class MainViewModel : ObservableObject
                     Name = projectName,
                     FolderPath = destPath
                 };
+                ProjectDetector.DetectAndApply(entry);
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     Projects.Add(entry);
