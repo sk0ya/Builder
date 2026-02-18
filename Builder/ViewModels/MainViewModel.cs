@@ -399,8 +399,21 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    partial void OnSelectedProjectChanging(ProjectEntry? value)
+    {
+        if (_selectedProject != null)
+            _selectedProject.Log = OutputLog;
+    }
+
+    partial void OnSelectedProjectChanged(ProjectEntry? value)
+    {
+        OutputLog = value?.Log ?? string.Empty;
+    }
+
     private void AppendLog(string line)
     {
         OutputLog += line + Environment.NewLine;
+        if (SelectedProject != null)
+            SelectedProject.Log = OutputLog;
     }
 }

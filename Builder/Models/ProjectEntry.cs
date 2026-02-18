@@ -14,5 +14,8 @@ public class ProjectEntry
     public ObservableCollection<ProjectAction> Actions { get; set; } = [];
 
     [JsonIgnore]
+    public string Log { get; set; } = string.Empty;
+
+    [JsonIgnore]
     public bool IsGitRepository => System.IO.Directory.Exists(System.IO.Path.Combine(FolderPath, ".git"));
 }
