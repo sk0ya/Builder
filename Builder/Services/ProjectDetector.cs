@@ -14,7 +14,11 @@ public static class ProjectDetector
         if (!Directory.Exists(entry.FolderPath)) return;
 
         if (TryDetectDotNet(entry)) return;
-        // 今後: TryDetectNode(entry), TryDetectPython(entry), ...
+        if (TryDetectNode(entry)) return;
+        if (TryDetectPython(entry)) return;
+        if (TryDetectGo(entry)) return;
+        if (TryDetectRust(entry)) return;
+        if (TryDetectJava(entry)) return;
     }
 
     // .NET (*.csproj)
@@ -38,5 +42,80 @@ public static class ProjectDetector
             : $"dotnet run --project {relativePath}";
 
         return true;
+    }
+
+    // Node.js (package.json)
+    private static bool TryDetectNode(ProjectEntry entry)
+    {
+        var packageJson = Path.Combine(entry.FolderPath, "package.json");
+        if (!File.Exists(packageJson)) return false;
+
+        // TypeScript プロジェクトはビルドあり
+        var hasTs = File.Exists(Path.Combine(entry.FolderPath, "tsconfig.json"));
+        entry.BuildCommand = hasTs ? "npm run build" : "";
+        entry.LaunchCommand = "npm start";
+
+        return true;
+    }
+
+    // Python (requirements.txt / pyproject.toml / setup.py)
+    private static bool TryDetectPython(ProjectEntry entry)
+    {
+        var hasReqs    = File.Exists(Path.Combine(entry.FolderPath, "requirements.txt"));
+        var hasPyproj  = File.Exists(Path.Combine(entry.FolderPath, "pyproject.toml"));
+        var hasSetup   = File.Exists(Path.Combine(entry.FolderPath, "setup.py"));
+        if (!hasReqs && !hasPyproj && !hasSetup) return false;
+
+        entry.BuildCommand = "";
+        // manage.py があれば Django と判断
+        if (File.Exists(Path.Combine(entry.FolderPath, "manage.py")))
+            entry.LaunchCommand = "python manage.py runserver";
+        else
+            entry.LaunchCommand = "python main.py";
+
+        return true;
+    }
+
+    // Go (go.mod)
+    private static bool TryDetectGo(ProjectEntry entry)
+    {
+        if (!File.Exists(Path.Combine(entry.FolderPath, "go.mod"))) return false;
+
+        entry.BuildCommand = "go build ./...";
+        entry.LaunchCommand = "go run .";
+
+        return true;
+    }
+
+    // Rust (Cargo.toml)
+    private static bool TryDetectRust(ProjectEntry entry)
+    {
+        if (!File.Exists(Path.Combine(entry.FolderPath, "Cargo.toml"))) return false;
+
+        entry.BuildCommand = "cargo build";
+        entry.LaunchCommand = "cargo run";
+
+        return true;
+    }
+
+    // Java: Maven (pom.xml) / Gradle (build.gradle)
+    private static bool TryDetectJava(ProjectEntry entry)
+    {
+        if (File.Exists(Path.Combine(entry.FolderPath, "pom.xml")))
+        {
+            entry.BuildCommand = "mvn package";
+            entry.LaunchCommand = "mvn exec:java";
+            return true;
+        }
+
+        if (File.Exists(Path.Combine(entry.FolderPath, "build.gradle")) ||
+            File.Exists(Path.Combine(entry.FolderPath, "build.gradle.kts")))
+        {
+            entry.BuildCommand = "gradle build";
+            entry.LaunchCommand = "gradle run";
+            return true;
+        }
+
+        return false;
     }
 }

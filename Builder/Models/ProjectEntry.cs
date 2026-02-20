@@ -54,6 +54,10 @@ public class ProjectEntry
             if (topFiles.Contains("go.mod"))
                 return PackIconKind.LanguageGo;
 
+            // Rust
+            if (topFiles.Contains("Cargo.toml"))
+                return PackIconKind.LanguageRust;
+
             // Java (Maven / Gradle)
             if (topFiles.Contains("pom.xml") || topFiles.Contains("build.gradle") || topFiles.Contains("build.gradle.kts"))
                 return PackIconKind.LanguageJava;
