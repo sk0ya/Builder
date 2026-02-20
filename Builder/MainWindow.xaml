@@ -130,11 +130,23 @@
                     </ListBox.ItemContainerStyle>
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel>
-                                <TextBlock Text="{Binding Name}" FontSize="13" />
-                                <TextBlock Text="{Binding FolderPath}" FontSize="10.5"
-                                           Foreground="{DynamicResource ThemeMutedText}" TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <materialDesign:PackIcon Grid.Column="0"
+                                                         Kind="{Binding IconKind}"
+                                                         Width="16" Height="16"
+                                                         VerticalAlignment="Top"
+                                                         Margin="0,2,8,0"
+                                                         Foreground="{DynamicResource ThemeSubText}" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{Binding Name}" FontSize="13" />
+                                    <TextBlock Text="{Binding FolderPath}" FontSize="10.5"
+                                               Foreground="{DynamicResource ThemeMutedText}" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
