@@ -112,6 +112,8 @@
                          AllowDrop="True"
                          PreviewMouseLeftButtonDown="ProjectList_PreviewMouseLeftButtonDown"
                          PreviewMouseMove="ProjectList_PreviewMouseMove"
+                         PreviewMouseRightButtonDown="ProjectList_PreviewMouseRightButtonDown"
+                         PreviewMouseRightButtonUp="ProjectList_PreviewMouseRightButtonUp"
                          Drop="ProjectList_Drop"
                          DragOver="ProjectList_DragOver"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">

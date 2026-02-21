@@ -77,6 +77,25 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ProjectList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var item = FindAncestor<ListBoxItem>((DependencyObject)e.OriginalSource);
+        if (item == null) return;
+
+        var project = (ProjectEntry)ProjectListBox.ItemContainerGenerator.ItemFromContainer(item);
+        if (project == null || !System.IO.Directory.Exists(project.FolderPath)) return;
+
+        item.IsSelected = true;
+        ShellContextMenu.Prepare(project.FolderPath, this);
+    }
+
+    private void ProjectList_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var screenPoint = PointToScreen(e.GetPosition(this));
+        ShellContextMenu.ShowPrepared(screenPoint);
+        e.Handled = true;
+    }
+
     // --- Drag & Drop for project reordering ---
 
     private Point _dragStartPoint;
