@@ -34,6 +34,12 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _isBusy;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCurrentBranch))]
+    private string _currentBranch = string.Empty;
+
+    public bool HasCurrentBranch => !string.IsNullOrEmpty(CurrentBranch);
+
     private string _backgroundColorHex = "#1E1E1E";
     private string _accentColorHex = "#4FC3F7";
 
@@ -522,6 +528,32 @@ public partial class MainViewModel : ObservableObject
     partial void OnSelectedProjectChanged(ProjectEntry? value)
     {
         OutputLog = value?.Log ?? string.Empty;
+        RefreshCurrentBranch();
+    }
+
+    private void RefreshCurrentBranch()
+    {
+        if (SelectedProject == null || !SelectedProject.IsGitRepository)
+        {
+            CurrentBranch = string.Empty;
+            return;
+        }
+
+        var headFile = Path.Combine(SelectedProject.FolderPath, ".git", "HEAD");
+        try
+        {
+            var content = File.ReadAllText(headFile).Trim();
+            if (content.StartsWith("ref: refs/heads/"))
+                CurrentBranch = content["ref: refs/heads/".Length..];
+            else if (content.Length >= 7)
+                CurrentBranch = content[..7]; // detached HEAD
+            else
+                CurrentBranch = content;
+        }
+        catch
+        {
+            CurrentBranch = string.Empty;
+        }
     }
 
     private void AppendLog(string line)
