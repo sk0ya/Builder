@@ -21,7 +21,9 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<ProjectEntry> Projects { get; } = [];
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(GitFetchCommand))]
     [NotifyCanExecuteChangedFor(nameof(GitPullCommand))]
+    [NotifyCanExecuteChangedFor(nameof(GitPushCommand))]
     [NotifyCanExecuteChangedFor(nameof(BuildCommand))]
     [NotifyCanExecuteChangedFor(nameof(LaunchCommand))]
     [NotifyCanExecuteChangedFor(nameof(RemoveProjectCommand))]
@@ -44,6 +46,8 @@ public partial class MainViewModel : ObservableObject
     private string _accentColorHex = "#4FC3F7";
 
     public bool HasSelectedProject => SelectedProject != null;
+
+    public ObservableCollection<string> Branches { get; } = [];
 
     public MainViewModel()
     {
@@ -302,6 +306,21 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedProject))]
+    private async Task GitFetch()
+    {
+        if (SelectedProject == null) return;
+
+        if (!SelectedProject.IsGitRepository)
+        {
+            AppendLog("[エラー] このフォルダはGitリポジトリではありません。");
+            return;
+        }
+
+        await RunCommandAsync(SelectedProject.FolderPath, "git fetch");
+        RefreshCurrentBranch();
+    }
+
+    [RelayCommand(CanExecute = nameof(HasSelectedProject))]
     private async Task GitPull()
     {
         if (SelectedProject == null) return;
@@ -313,6 +332,32 @@ public partial class MainViewModel : ObservableObject
         }
 
         await RunCommandAsync(SelectedProject.FolderPath, "git pull");
+        RefreshCurrentBranch();
+    }
+
+    [RelayCommand(CanExecute = nameof(HasSelectedProject))]
+    private async Task GitPush()
+    {
+        if (SelectedProject == null) return;
+
+        if (!SelectedProject.IsGitRepository)
+        {
+            AppendLog("[エラー] このフォルダはGitリポジトリではありません。");
+            return;
+        }
+
+        await RunCommandAsync(SelectedProject.FolderPath, "git push");
+    }
+
+    [RelayCommand]
+    private async Task SwitchBranch(string branchName)
+    {
+        if (SelectedProject == null || string.IsNullOrEmpty(branchName)) return;
+        if (branchName == CurrentBranch) return;
+
+        await RunCommandAsync(SelectedProject.FolderPath, $"git switch {branchName}");
+        RefreshCurrentBranch();
+        await RefreshBranchesAsync();
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedProject))]
@@ -529,6 +574,40 @@ public partial class MainViewModel : ObservableObject
     {
         OutputLog = value?.Log ?? string.Empty;
         RefreshCurrentBranch();
+        _ = RefreshBranchesAsync();
+    }
+
+    private async Task RefreshBranchesAsync()
+    {
+        Branches.Clear();
+        if (SelectedProject == null || !SelectedProject.IsGitRepository) return;
+
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "git",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true,
+                WorkingDirectory = SelectedProject.FolderPath,
+                StandardOutputEncoding = Encoding.UTF8
+            };
+            psi.ArgumentList.Add("branch");
+
+            using var process = new Process { StartInfo = psi };
+            process.Start();
+            var output = await process.StandardOutput.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            foreach (var line in output.Split('\n'))
+            {
+                var branch = line.TrimStart('*', ' ').Trim();
+                if (!string.IsNullOrEmpty(branch))
+                    Branches.Add(branch);
+            }
+        }
+        catch { }
     }
 
     private void RefreshCurrentBranch()

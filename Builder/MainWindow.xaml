@@ -164,18 +164,84 @@
                 </Grid.RowDefinitions>
 
                 <!-- Settings -->
-                <StackPanel Grid.Row="0" Margin="14,12,14,4"
+                <StackPanel Grid.Row="0" Margin="14,8,14,4"
                             Visibility="{Binding HasSelectedProject, Converter={StaticResource BooleanToVisibilityConverter}}">
 
                     <!-- Branch Info -->
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6"
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,2"
                                 Visibility="{Binding HasCurrentBranch, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <materialDesign:PackIcon Kind="SourceBranch" Width="14" Height="14"
-                                                 Foreground="{DynamicResource ThemeAccent}"
-                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
-                        <TextBlock Text="{Binding CurrentBranch}" FontSize="12"
-                                   Foreground="{DynamicResource ThemeAccent}"
-                                   VerticalAlignment="Center" />
+                        <!-- Branch switch popup -->
+                        <materialDesign:PopupBox x:Name="BranchPopupBox"
+                                                 PlacementMode="BottomAndAlignLeftEdges"
+                                                 StaysOpen="False"
+                                                 Padding="0"
+                                                 ToolTip="ブランチを切り替え"
+                                                 materialDesign:RippleAssist.IsDisabled="True"
+                                                 materialDesign:RippleAssist.Feedback="Transparent">
+                            <materialDesign:PopupBox.ToggleContent>
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="SourceBranch" Width="15" Height="15"
+                                                             Foreground="{DynamicResource ThemeAccent}"
+                                                             VerticalAlignment="Center" Margin="0,0,4,0" />
+                                    <TextBlock Text="{Binding CurrentBranch}" FontSize="12"
+                                               Foreground="{DynamicResource ThemeAccent}"
+                                               VerticalAlignment="Center" />
+                                    <materialDesign:PackIcon Kind="MenuDown" Width="13" Height="13"
+                                                             Foreground="{DynamicResource ThemeAccent}"
+                                                             VerticalAlignment="Center" />
+                                </StackPanel>
+                            </materialDesign:PopupBox.ToggleContent>
+                            <ListBox ItemsSource="{Binding Branches}"
+                                     Background="{DynamicResource MaterialDesignPaper}"
+                                     BorderThickness="0"
+                                     MaxHeight="200">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                                        <Setter Property="Padding" Value="0" />
+                                        <Setter Property="Margin" Value="0" />
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Content="{Binding}"
+                                                Command="{Binding DataContext.SwitchBranchCommand, Source={x:Reference BranchPopupBox}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource MaterialDesignFlatButton}"
+                                                Height="30" Padding="12,0" FontSize="12"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </materialDesign:PopupBox>
+                        <!-- Git operation buttons -->
+                        <Button Command="{Binding GitFetchCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Height="30" Padding="10,0" FontSize="12">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="CloudDownloadOutline" Width="15" Height="15"
+                                                         Margin="0,0,4,0" VerticalAlignment="Center" />
+                                <TextBlock Text="Fetch" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding GitPullCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Height="30" Padding="10,0" FontSize="12">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ArrowDown" Width="15" Height="15"
+                                                         Margin="0,0,4,0" VerticalAlignment="Center" />
+                                <TextBlock Text="Pull" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding GitPushCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Height="30" Padding="10,0" FontSize="12">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ArrowUp" Width="15" Height="15"
+                                                         Margin="0,0,4,0" VerticalAlignment="Center" />
+                                <TextBlock Text="Push" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
 
                     <Grid>
@@ -187,20 +253,16 @@
 
                         <TextBox Grid.Column="0"
                                  Text="{Binding SelectedProject.BuildCommand, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                  materialDesign:HintAssist.Hint="ビルドコマンド"
-                                 materialDesign:HintAssist.IsFloating="True"
                                  Foreground="{DynamicResource MaterialDesignBody}"
-                                 FontSize="13" Margin="0,0,0,6"
+                                 FontSize="13"
                                  LostFocus="OnSettingsFieldLostFocus" />
 
                         <TextBox Grid.Column="2"
                                  Text="{Binding SelectedProject.LaunchCommand, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                  materialDesign:HintAssist.Hint="起動コマンド"
-                                 materialDesign:HintAssist.IsFloating="True"
                                  Foreground="{DynamicResource MaterialDesignBody}"
-                                 FontSize="13" Margin="0,0,0,6"
+                                 FontSize="13"
                                  LostFocus="OnSettingsFieldLostFocus" />
                     </Grid>
 
@@ -208,17 +270,7 @@
                     <FrameworkElement x:Name="ActionAnchor" Visibility="Collapsed" />
 
                     <!-- Buttons -->
-                    <StackPanel Orientation="Horizontal" Margin="0,4,0,6">
-                        <Button Command="{Binding GitPullCommand}"
-                                Style="{StaticResource MaterialDesignFlatButton}"
-                                Height="30" Padding="10,0" FontSize="12">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="SourceBranch" Width="15" Height="15"
-                                                         Margin="0,0,4,0" VerticalAlignment="Center" />
-                                <TextBlock Text="Pull" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <Button Command="{Binding BuildCommand}"
                                 Style="{StaticResource MaterialDesignFlatButton}"
                                 Height="30" Padding="10,0" FontSize="12">
