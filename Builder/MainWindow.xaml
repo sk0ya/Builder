@@ -248,7 +248,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Github" Width="15" Height="15"
                                                          Margin="0,0,4,0" VerticalAlignment="Center" />
-                                <TextBlock Text="GitHub" VerticalAlignment="Center" />
+                                <TextBlock Text="Repo" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -378,21 +378,20 @@
                         </StackPanel>
                     </DockPanel>
 
-                    <TextBox x:Name="OutputLogTextBox"
-                             Text="{Binding OutputLog, Mode=OneWay}"
-                             IsReadOnly="True"
-                             VerticalScrollBarVisibility="Auto"
-                             HorizontalScrollBarVisibility="Auto"
-                             FontFamily="Consolas"
-                             FontSize="12"
-                             TextWrapping="Wrap"
-                             AcceptsReturn="True"
-                             Background="{DynamicResource ThemeOutput}"
-                             Foreground="{DynamicResource ThemeOutputForeground}"
-                             BorderBrush="{DynamicResource ThemeBorder}"
-                             BorderThickness="1"
-                             Padding="8,6"
-                             TextChanged="OutputLogTextBox_TextChanged" />
+                    <RichTextBox x:Name="OutputLogBox"
+                                 Style="{x:Null}"
+                                 IsReadOnly="True"
+                                 VerticalScrollBarVisibility="Auto"
+                                 HorizontalScrollBarVisibility="Disabled"
+                                 FontFamily="Consolas"
+                                 FontSize="12"
+                                 Background="{DynamicResource ThemeOutput}"
+                                 Foreground="{DynamicResource ThemeOutputForeground}"
+                                 BorderBrush="{DynamicResource ThemeBorder}"
+                                 BorderThickness="1"
+                                 Padding="8,6">
+                        <FlowDocument PagePadding="0" />
+                    </RichTextBox>
                 </DockPanel>
             </Grid>
         </Grid>

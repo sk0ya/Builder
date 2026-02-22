@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using Builder.Models;
@@ -10,14 +11,104 @@ namespace Builder;
 
 public partial class MainWindow : Window
 {
+    // 行をまたいで ANSI エスケープ状態を維持するインスタンス
+    private readonly AnsiState _ansiState = new();
+
     public MainWindow()
     {
         InitializeComponent();
+
+        // FlowDocument のデフォルト余白をゼロに
+        OutputLogBox.Document.PagePadding = new Thickness(0);
+
+        if (DataContext is MainViewModel vm)
+        {
+            vm.LineAppended += AppendAnsiLine;
+            vm.LogReset += ResetLog;
+            ResetLog(vm.OutputLog);
+        }
     }
 
-    private void OutputLogTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    private Paragraph EnsureParagraph()
     {
-        OutputLogTextBox.ScrollToEnd();
+        var doc = OutputLogBox.Document;
+        if (doc.Blocks.LastBlock is Paragraph p) return p;
+        var para = new Paragraph { Margin = new Thickness(0) };
+        doc.Blocks.Add(para);
+        return para;
+    }
+
+    private void AppendAnsiLine(string line)
+    {
+        line = line.TrimEnd('\r');
+        var para = EnsureParagraph();
+        AppendLineToParagraph(para, line);
+        para.Inlines.Add(new LineBreak());
+        OutputLogBox.ScrollToEnd();
+    }
+
+    private void ResetLog(string fullLog)
+    {
+        _ansiState.Reset();  // 状態リセット（プロジェクト切替・クリア時）
+
+        var doc = OutputLogBox.Document;
+        doc.Blocks.Clear();
+
+        if (string.IsNullOrEmpty(fullLog)) return;
+
+        var para = new Paragraph { Margin = new Thickness(0) };
+        doc.Blocks.Add(para);
+
+        var lines = fullLog.Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i].TrimEnd('\r');
+            AppendLineToParagraph(para, line);
+            if (i < lines.Length - 1)
+                para.Inlines.Add(new LineBreak());
+        }
+
+        OutputLogBox.ScrollToEnd();
+    }
+
+    /// <summary>
+    /// 1行分のテキストを Paragraph に追加する。
+    /// - ANSI コードを含む行、または前の行からアクティブな色が引き継がれている場合:
+    ///   AnsiState でパースして色付きスパンを追加する。
+    /// - それ以外: キーワードパターンでフォールバック色付けを行う。
+    /// </summary>
+    private void AppendLineToParagraph(Paragraph para, string line)
+    {
+        bool hasAnsiCodes = line.Contains('\x1b');
+        bool hadActiveState = _ansiState.HasActiveState;
+
+        // 状態を更新しながらパース（ANSI なし・状態なしの場合も呼んでおく）
+        var spans = _ansiState.Parse(line);
+
+        if (!hasAnsiCodes && !hadActiveState)
+        {
+            // ANSI コードなし・引き継ぎ状態なし → キーワードフォールバック
+            var fallback = AnsiParser.GetFallbackColor(line);
+            var run = new Run(line);
+            if (fallback.HasValue)
+                run.Foreground = new SolidColorBrush(fallback.Value);
+            para.Inlines.Add(run);
+            return;
+        }
+
+        // ANSI あり or 前行から色を引き継いでいる → スパンごとに色を適用
+        foreach (var span in spans)
+        {
+            if (span.Text.Length == 0) continue;
+            var run = new Run(span.Text);
+            if (span.Foreground.HasValue)
+                run.Foreground = new SolidColorBrush(span.Foreground.Value);
+            if (span.Background.HasValue)
+                run.Background = new SolidColorBrush(span.Background.Value);
+            if (span.Bold)
+                run.FontWeight = FontWeights.Bold;
+            para.Inlines.Add(run);
+        }
     }
 
     private void OnSettingsFieldLostFocus(object sender, RoutedEventArgs e)

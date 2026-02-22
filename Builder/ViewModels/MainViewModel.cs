@@ -18,6 +18,12 @@ public partial class MainViewModel : ObservableObject
     private readonly ProcessService _processService = new();
     private CancellationTokenSource? _cts;
 
+    /// <summary>新しいログ行が追加されたときに発火（行テキストのみ、改行なし）</summary>
+    public event Action<string>? LineAppended;
+
+    /// <summary>ログがリセットされたときに発火（プロジェクト切替・クリア時）。引数は新しい全文。</summary>
+    public event Action<string>? LogReset;
+
     public ObservableCollection<ProjectEntry> Projects { get; } = [];
 
     [ObservableProperty]
@@ -362,9 +368,9 @@ public partial class MainViewModel : ObservableObject
         }
 
         var remoteUrl = await GetGitOriginUrlAsync(SelectedProject.FolderPath);
-        if (!TryConvertToGithubPageUrl(remoteUrl, out var githubUrl))
+        if (!TryConvertToRepositoryPageUrl(remoteUrl, out var repositoryPageUrl))
         {
-            AppendLog("[エラー] GitHubのorigin URLを取得できませんでした。");
+            AppendLog("[エラー] origin URLからGitHub/Azure DevOpsのページを特定できませんでした。");
             return;
         }
 
@@ -372,14 +378,14 @@ public partial class MainViewModel : ObservableObject
         {
             Process.Start(new ProcessStartInfo
             {
-                FileName = githubUrl,
+                FileName = repositoryPageUrl,
                 UseShellExecute = true
             });
-            AppendLog($"[GitHub] {githubUrl}");
+            AppendLog($"[Repo] {repositoryPageUrl}");
         }
         catch (Exception ex)
         {
-            AppendLog($"[エラー] GitHubページを開けませんでした: {ex.Message}");
+            AppendLog($"[エラー] リポジトリページを開けませんでした: {ex.Message}");
         }
     }
 
@@ -447,6 +453,9 @@ public partial class MainViewModel : ObservableObject
     private void ClearLog()
     {
         OutputLog = string.Empty;
+        if (SelectedProject != null)
+            SelectedProject.Log = string.Empty;
+        LogReset?.Invoke(string.Empty);
     }
 
     [RelayCommand]
@@ -607,6 +616,7 @@ public partial class MainViewModel : ObservableObject
     partial void OnSelectedProjectChanged(ProjectEntry? value)
     {
         OutputLog = value?.Log ?? string.Empty;
+        LogReset?.Invoke(OutputLog);
         RefreshCurrentBranch();
         _ = RefreshBranchesAsync();
     }
@@ -674,39 +684,146 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private static bool TryConvertToGithubPageUrl(string remoteUrl, out string githubUrl)
+    private static bool TryConvertToRepositoryPageUrl(string remoteUrl, out string repositoryPageUrl)
     {
-        githubUrl = string.Empty;
+        repositoryPageUrl = string.Empty;
         if (string.IsNullOrWhiteSpace(remoteUrl)) return false;
 
         var normalized = remoteUrl.Trim();
+        return TryConvertToGithubPageUrl(normalized, out repositoryPageUrl) ||
+               TryConvertToAzureDevOpsPageUrl(normalized, out repositoryPageUrl);
+    }
 
-        if (normalized.StartsWith("git@github.com:", StringComparison.OrdinalIgnoreCase))
-        {
-            normalized = normalized["git@github.com:".Length..];
-        }
-        else if (normalized.StartsWith("ssh://git@github.com/", StringComparison.OrdinalIgnoreCase))
-        {
-            normalized = normalized["ssh://git@github.com/".Length..];
-        }
-        else if (Uri.TryCreate(normalized, UriKind.Absolute, out var uri) &&
-                 uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
-        {
-            normalized = uri.AbsolutePath.TrimStart('/');
-        }
-        else
-        {
-            return false;
-        }
+    private static bool TryConvertToGithubPageUrl(string remoteUrl, out string githubUrl)
+    {
+        githubUrl = string.Empty;
 
-        normalized = normalized.TrimEnd('/');
+        if (remoteUrl.StartsWith("git@github.com:", StringComparison.OrdinalIgnoreCase))
+            return TryBuildGithubPageUrl(remoteUrl["git@github.com:".Length..], out githubUrl);
+
+        if (remoteUrl.StartsWith("ssh://git@github.com/", StringComparison.OrdinalIgnoreCase))
+            return TryBuildGithubPageUrl(remoteUrl["ssh://git@github.com/".Length..], out githubUrl);
+
+        if (Uri.TryCreate(remoteUrl, UriKind.Absolute, out var uri) &&
+            uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
+            return TryBuildGithubPageUrl(uri.AbsolutePath.TrimStart('/'), out githubUrl);
+
+        return false;
+    }
+
+    private static bool TryBuildGithubPageUrl(string repoPath, out string githubUrl)
+    {
+        githubUrl = string.Empty;
+        if (string.IsNullOrWhiteSpace(repoPath)) return false;
+
+        var normalized = repoPath.Trim().TrimEnd('/');
         if (normalized.EndsWith(".git", StringComparison.OrdinalIgnoreCase))
             normalized = normalized[..^4];
 
         var segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (segments.Length < 2) return false;
 
-        githubUrl = $"https://github.com/{segments[0]}/{segments[1]}";
+        var owner = Uri.EscapeDataString(Uri.UnescapeDataString(segments[0]));
+        var repo = Uri.EscapeDataString(Uri.UnescapeDataString(segments[1]));
+        githubUrl = $"https://github.com/{owner}/{repo}";
+        return true;
+    }
+
+    private static bool TryConvertToAzureDevOpsPageUrl(string remoteUrl, out string azureDevOpsUrl)
+    {
+        azureDevOpsUrl = string.Empty;
+
+        if (remoteUrl.StartsWith("git@ssh.dev.azure.com:v3/", StringComparison.OrdinalIgnoreCase))
+            return TryBuildAzureDevOpsPageUrlFromSshPath(remoteUrl["git@ssh.dev.azure.com:v3/".Length..], out azureDevOpsUrl);
+
+        if (remoteUrl.StartsWith("ssh://git@ssh.dev.azure.com/v3/", StringComparison.OrdinalIgnoreCase))
+            return TryBuildAzureDevOpsPageUrlFromSshPath(remoteUrl["ssh://git@ssh.dev.azure.com/v3/".Length..], out azureDevOpsUrl);
+
+        if (!Uri.TryCreate(remoteUrl, UriKind.Absolute, out var uri))
+            return false;
+
+        if (uri.Host.Equals("ssh.dev.azure.com", StringComparison.OrdinalIgnoreCase))
+        {
+            var sshSegments = uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (sshSegments.Length >= 4 && sshSegments[0].Equals("v3", StringComparison.OrdinalIgnoreCase))
+                return TryBuildAzureDevOpsPageUrl(sshSegments[1], sshSegments[2], sshSegments[3], out azureDevOpsUrl);
+            return false;
+        }
+
+        if (uri.Host.Equals("dev.azure.com", StringComparison.OrdinalIgnoreCase))
+        {
+            var segments = uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+            if (segments.Length >= 4 && segments[2].Equals("_git", StringComparison.OrdinalIgnoreCase))
+                return TryBuildAzureDevOpsPageUrl(segments[0], segments[1], segments[3], out azureDevOpsUrl);
+
+            if (segments.Length >= 4 && segments[0].Equals("v3", StringComparison.OrdinalIgnoreCase))
+                return TryBuildAzureDevOpsPageUrl(segments[1], segments[2], segments[3], out azureDevOpsUrl);
+
+            return false;
+        }
+
+        if (uri.Host.EndsWith(".visualstudio.com", StringComparison.OrdinalIgnoreCase))
+        {
+            var segments = uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length >= 3 && segments[1].Equals("_git", StringComparison.OrdinalIgnoreCase))
+                return TryBuildVisualStudioPageUrl(uri.Host, segments[0], segments[2], out azureDevOpsUrl);
+
+            if (segments.Length >= 4 &&
+                segments[0].Equals("DefaultCollection", StringComparison.OrdinalIgnoreCase) &&
+                segments[2].Equals("_git", StringComparison.OrdinalIgnoreCase))
+                return TryBuildVisualStudioPageUrl(uri.Host, segments[1], segments[3], out azureDevOpsUrl);
+        }
+
+        return false;
+    }
+
+    private static bool TryBuildAzureDevOpsPageUrlFromSshPath(string sshPath, out string azureDevOpsUrl)
+    {
+        azureDevOpsUrl = string.Empty;
+        if (string.IsNullOrWhiteSpace(sshPath)) return false;
+
+        var segments = sshPath.Trim().Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length < 3) return false;
+
+        return TryBuildAzureDevOpsPageUrl(segments[0], segments[1], segments[2], out azureDevOpsUrl);
+    }
+
+    private static bool TryBuildAzureDevOpsPageUrl(string organization, string project, string repository, out string azureDevOpsUrl)
+    {
+        azureDevOpsUrl = string.Empty;
+
+        organization = Uri.UnescapeDataString(organization.Trim('/'));
+        project = Uri.UnescapeDataString(project.Trim('/'));
+        repository = Uri.UnescapeDataString(repository.Trim('/'));
+        if (repository.EndsWith(".git", StringComparison.OrdinalIgnoreCase))
+            repository = repository[..^4];
+
+        if (string.IsNullOrWhiteSpace(organization) ||
+            string.IsNullOrWhiteSpace(project) ||
+            string.IsNullOrWhiteSpace(repository))
+            return false;
+
+        azureDevOpsUrl =
+            $"https://dev.azure.com/{Uri.EscapeDataString(organization)}/{Uri.EscapeDataString(project)}/_git/{Uri.EscapeDataString(repository)}";
+        return true;
+    }
+
+    private static bool TryBuildVisualStudioPageUrl(string host, string project, string repository, out string visualStudioUrl)
+    {
+        visualStudioUrl = string.Empty;
+        project = Uri.UnescapeDataString(project.Trim('/'));
+        repository = Uri.UnescapeDataString(repository.Trim('/'));
+        if (repository.EndsWith(".git", StringComparison.OrdinalIgnoreCase))
+            repository = repository[..^4];
+
+        if (string.IsNullOrWhiteSpace(host) ||
+            string.IsNullOrWhiteSpace(project) ||
+            string.IsNullOrWhiteSpace(repository))
+            return false;
+
+        visualStudioUrl =
+            $"https://{host}/{Uri.EscapeDataString(project)}/_git/{Uri.EscapeDataString(repository)}";
         return true;
     }
 
@@ -740,5 +857,6 @@ public partial class MainViewModel : ObservableObject
         OutputLog += line + Environment.NewLine;
         if (SelectedProject != null)
             SelectedProject.Log = OutputLog;
+        LineAppended?.Invoke(line);
     }
 }
