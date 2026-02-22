@@ -469,6 +469,21 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void OpenPowerShell()
+    {
+        if (SelectedProject == null) return;
+        if (Directory.Exists(SelectedProject.FolderPath))
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo("pwsh.exe")
+            {
+                WorkingDirectory = SelectedProject.FolderPath,
+                UseShellExecute = true
+            };
+            System.Diagnostics.Process.Start(psi);
+        }
+    }
+
+    [RelayCommand]
     private async Task AddAction()
     {
         if (SelectedProject == null) return;

@@ -307,6 +307,12 @@
                             <materialDesign:PackIcon Kind="FolderOpen" Width="15" Height="15" Foreground="{DynamicResource ThemeSubText}" />
                         </Button>
 
+                        <Button Command="{Binding OpenPowerShellCommand}"
+                                Style="{StaticResource MaterialDesignToolButton}"
+                                ToolTip="PowerShellを開く" Width="28" Height="28">
+                            <materialDesign:PackIcon Kind="Console" Width="15" Height="15" Foreground="{DynamicResource ThemeSubText}" />
+                        </Button>
+
                         <Button Command="{Binding AddActionCommand}"
                                 Style="{StaticResource MaterialDesignToolButton}"
                                 ToolTip="アクション追加" Width="28" Height="28" Margin="2,0,0,0">
