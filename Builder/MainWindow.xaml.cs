@@ -168,6 +168,15 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ProjectListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.AddedItems.Count > 0 && e.AddedItems[0] is ProjectEntry project)
+        {
+            if (DataContext is MainViewModel vm)
+                vm.SelectedProject = project;
+        }
+    }
+
     private void ProjectList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         var item = FindAncestor<ListBoxItem>((DependencyObject)e.OriginalSource);

@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:vm="clr-namespace:Builder.ViewModels"
+        xmlns:local="clr-namespace:Builder"
         Title="Builder"
         Icon="pack://application:,,,/Builder.ico"
         Width="1000" Height="650"
@@ -104,9 +105,30 @@
                     </StackPanel>
                 </DockPanel>
 
+                <!-- Filter TextBox -->
+                <Grid DockPanel.Dock="Top" Margin="10,0,10,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <materialDesign:PackIcon Grid.Column="0" Kind="Magnify" Width="13" Height="13"
+                                            VerticalAlignment="Center" Margin="0,0,4,0"
+                                            Foreground="{DynamicResource ThemeMutedText}"
+                                            IsHitTestVisible="False" />
+                    <TextBox Grid.Column="1"
+                             Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
+                             materialDesign:HintAssist.Hint="フィルター"
+                             FontSize="12"
+                             Background="Transparent"
+                             BorderThickness="0,0,0,1"
+                             BorderBrush="{DynamicResource ThemeSplitter}"
+                             Padding="0,2,0,2" />
+                </Grid>
+
                 <ListBox x:Name="ProjectListBox"
-                         ItemsSource="{Binding Projects}"
-                         SelectedItem="{Binding SelectedProject}"
+                         ItemsSource="{Binding FilteredProjects}"
+                         SelectedItem="{Binding SelectedProject, Mode=OneWay}"
+                         SelectionChanged="ProjectListBox_SelectionChanged"
                          Background="Transparent" BorderThickness="0"
                          Padding="4,0"
                          AllowDrop="True"
@@ -144,8 +166,12 @@
                                                          Margin="0,2,8,0"
                                                          Foreground="{DynamicResource ThemeSubText}" />
                                 <StackPanel Grid.Column="1">
-                                    <TextBlock Text="{Binding Name}" FontSize="13" />
-                                    <TextBlock Text="{Binding FolderPath}" FontSize="10.5"
+                                    <TextBlock local:TextHighlighter.Text="{Binding Name}"
+                                               local:TextHighlighter.Query="{Binding DataContext.HighlightText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                               FontSize="13" />
+                                    <TextBlock local:TextHighlighter.Text="{Binding FolderPath}"
+                                               local:TextHighlighter.Query="{Binding DataContext.HighlightText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                               FontSize="10.5"
                                                Foreground="{DynamicResource ThemeMutedText}" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </Grid>

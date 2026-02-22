@@ -23,54 +23,55 @@ public class ProjectEntry
     public bool IsGitRepository => Directory.Exists(Path.Combine(FolderPath, ".git"));
 
     [JsonIgnore]
-    public PackIconKind IconKind
+    public PackIconKind IconKind => _iconKind ??= DetectIconKind();
+
+    private PackIconKind? _iconKind;
+
+    private PackIconKind DetectIconKind()
     {
-        get
-        {
-            if (!Directory.Exists(FolderPath)) return PackIconKind.CodeBraces;
+        if (!Directory.Exists(FolderPath)) return PackIconKind.CodeBraces;
 
-            // .csproj/.sln → C#
-            if (Directory.GetFiles(FolderPath, "*.csproj", SearchOption.AllDirectories).Length > 0 ||
-                Directory.GetFiles(FolderPath, "*.sln", SearchOption.TopDirectoryOnly).Length > 0)
-                return PackIconKind.LanguageCsharp;
+        // .csproj/.sln → C#
+        if (Directory.GetFiles(FolderPath, "*.csproj", SearchOption.AllDirectories).Length > 0 ||
+            Directory.GetFiles(FolderPath, "*.sln", SearchOption.TopDirectoryOnly).Length > 0)
+            return PackIconKind.LanguageCsharp;
 
-            var topFiles = Directory.GetFiles(FolderPath, "*", SearchOption.TopDirectoryOnly)
-                                    .Select(f => Path.GetFileName(f))
-                                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var topFiles = Directory.GetFiles(FolderPath, "*", SearchOption.TopDirectoryOnly)
+                                .Select(f => Path.GetFileName(f))
+                                .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            // tsconfig.json → TypeScript
-            if (topFiles.Contains("tsconfig.json"))
-                return PackIconKind.LanguageTypescript;
+        // tsconfig.json → TypeScript
+        if (topFiles.Contains("tsconfig.json"))
+            return PackIconKind.LanguageTypescript;
 
-            // package.json → Node.js
-            if (topFiles.Contains("package.json"))
-                return PackIconKind.Nodejs;
+        // package.json → Node.js
+        if (topFiles.Contains("package.json"))
+            return PackIconKind.Nodejs;
 
-            // Python
-            if (topFiles.Contains("requirements.txt") || topFiles.Contains("setup.py") || topFiles.Contains("pyproject.toml"))
-                return PackIconKind.LanguagePython;
+        // Python
+        if (topFiles.Contains("requirements.txt") || topFiles.Contains("setup.py") || topFiles.Contains("pyproject.toml"))
+            return PackIconKind.LanguagePython;
 
-            // Go
-            if (topFiles.Contains("go.mod"))
-                return PackIconKind.LanguageGo;
+        // Go
+        if (topFiles.Contains("go.mod"))
+            return PackIconKind.LanguageGo;
 
-            // Rust
-            if (topFiles.Contains("Cargo.toml"))
-                return PackIconKind.LanguageRust;
+        // Rust
+        if (topFiles.Contains("Cargo.toml"))
+            return PackIconKind.LanguageRust;
 
-            // Java (Maven / Gradle)
-            if (topFiles.Contains("pom.xml") || topFiles.Contains("build.gradle") || topFiles.Contains("build.gradle.kts"))
-                return PackIconKind.LanguageJava;
+        // Java (Maven / Gradle)
+        if (topFiles.Contains("pom.xml") || topFiles.Contains("build.gradle") || topFiles.Contains("build.gradle.kts"))
+            return PackIconKind.LanguageJava;
 
-            // Ruby
-            if (topFiles.Contains("Gemfile"))
-                return PackIconKind.LanguageRuby;
+        // Ruby
+        if (topFiles.Contains("Gemfile"))
+            return PackIconKind.LanguageRuby;
 
-            // PHP
-            if (Directory.GetFiles(FolderPath, "*.php", SearchOption.TopDirectoryOnly).Length > 0)
-                return PackIconKind.LanguagePhp;
+        // PHP
+        if (Directory.GetFiles(FolderPath, "*.php", SearchOption.TopDirectoryOnly).Length > 0)
+            return PackIconKind.LanguagePhp;
 
-            return PackIconKind.CodeBraces;
-        }
+        return PackIconKind.CodeBraces;
     }
 }

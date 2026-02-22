@@ -1,9 +1,12 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Builder.Models;
 using Builder.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -17,6 +20,7 @@ public partial class MainViewModel : ObservableObject
     private readonly SettingsService _settingsService = new();
     private readonly ProcessService _processService = new();
     private CancellationTokenSource? _cts;
+    private readonly DispatcherTimer _filterTimer;
 
     /// <summary>新しいログ行が追加されたときに発火（行テキストのみ、改行なし）</summary>
     public event Action<string>? LineAppended;
@@ -25,6 +29,14 @@ public partial class MainViewModel : ObservableObject
     public event Action<string>? LogReset;
 
     public ObservableCollection<ProjectEntry> Projects { get; } = [];
+
+    [ObservableProperty]
+    private string _filterText = string.Empty;
+
+    [ObservableProperty]
+    private string _highlightText = string.Empty;
+
+    public ICollectionView FilteredProjects { get; }
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(GitFetchCommand))]
@@ -58,8 +70,40 @@ public partial class MainViewModel : ObservableObject
 
     public MainViewModel()
     {
+        FilteredProjects = CollectionViewSource.GetDefaultView(Projects);
+        FilteredProjects.Filter = ProjectFilter;
+
+        _filterTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _filterTimer.Tick += (_, _) =>
+        {
+            _filterTimer.Stop();
+            HighlightText = FilterText;
+            FilteredProjects.Refresh();
+        };
+
         LoadProjects();
         LoadTheme();
+    }
+
+    private bool ProjectFilter(object item)
+    {
+        if (item is not ProjectEntry project) return false;
+        if (project == SelectedProject) return true;
+        if (string.IsNullOrWhiteSpace(FilterText)) return true;
+        return project.Name.Contains(FilterText, StringComparison.OrdinalIgnoreCase) ||
+               project.FolderPath.Contains(FilterText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    partial void OnFilterTextChanged(string value)
+    {
+        _filterTimer.Stop();
+        if (string.IsNullOrEmpty(value))
+        {
+            HighlightText = string.Empty;
+            FilteredProjects.Refresh(); // クリア時は即時反映
+        }
+        else
+            _filterTimer.Start();
     }
 
     private void LoadTheme()
@@ -630,6 +674,7 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSelectedProjectChanged(ProjectEntry? value)
     {
+        FilteredProjects.Refresh();
         OutputLog = value?.Log ?? string.Empty;
         LogReset?.Invoke(OutputLog);
         RefreshCurrentBranch();
