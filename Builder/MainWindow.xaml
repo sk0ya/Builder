@@ -242,6 +242,15 @@
                                 <TextBlock Text="Push" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
+                        <Button Command="{Binding OpenGithubPageCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Height="30" Padding="10,0" FontSize="12">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Github" Width="15" Height="15"
+                                                         Margin="0,0,4,0" VerticalAlignment="Center" />
+                                <TextBlock Text="GitHub" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
 
                     <Grid>

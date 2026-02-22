@@ -24,6 +24,7 @@ public partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(GitFetchCommand))]
     [NotifyCanExecuteChangedFor(nameof(GitPullCommand))]
     [NotifyCanExecuteChangedFor(nameof(GitPushCommand))]
+    [NotifyCanExecuteChangedFor(nameof(OpenGithubPageCommand))]
     [NotifyCanExecuteChangedFor(nameof(BuildCommand))]
     [NotifyCanExecuteChangedFor(nameof(LaunchCommand))]
     [NotifyCanExecuteChangedFor(nameof(RemoveProjectCommand))]
@@ -349,6 +350,39 @@ public partial class MainViewModel : ObservableObject
         await RunCommandAsync(SelectedProject.FolderPath, "git push");
     }
 
+    [RelayCommand(CanExecute = nameof(HasSelectedProject))]
+    private async Task OpenGithubPage()
+    {
+        if (SelectedProject == null) return;
+
+        if (!SelectedProject.IsGitRepository)
+        {
+            AppendLog("[エラー] このフォルダはGitリポジトリではありません。");
+            return;
+        }
+
+        var remoteUrl = await GetGitOriginUrlAsync(SelectedProject.FolderPath);
+        if (!TryConvertToGithubPageUrl(remoteUrl, out var githubUrl))
+        {
+            AppendLog("[エラー] GitHubのorigin URLを取得できませんでした。");
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = githubUrl,
+                UseShellExecute = true
+            });
+            AppendLog($"[GitHub] {githubUrl}");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"[エラー] GitHubページを開けませんでした: {ex.Message}");
+        }
+    }
+
     [RelayCommand]
     private async Task SwitchBranch(string branchName)
     {
@@ -608,6 +642,72 @@ public partial class MainViewModel : ObservableObject
             }
         }
         catch { }
+    }
+
+    private static async Task<string> GetGitOriginUrlAsync(string workingDirectory)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "git",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true,
+                WorkingDirectory = workingDirectory,
+                StandardOutputEncoding = Encoding.UTF8
+            };
+            psi.ArgumentList.Add("remote");
+            psi.ArgumentList.Add("get-url");
+            psi.ArgumentList.Add("origin");
+
+            using var process = new Process { StartInfo = psi };
+            process.Start();
+            var output = await process.StandardOutput.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            return process.ExitCode == 0 ? output.Trim() : string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static bool TryConvertToGithubPageUrl(string remoteUrl, out string githubUrl)
+    {
+        githubUrl = string.Empty;
+        if (string.IsNullOrWhiteSpace(remoteUrl)) return false;
+
+        var normalized = remoteUrl.Trim();
+
+        if (normalized.StartsWith("git@github.com:", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized["git@github.com:".Length..];
+        }
+        else if (normalized.StartsWith("ssh://git@github.com/", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized["ssh://git@github.com/".Length..];
+        }
+        else if (Uri.TryCreate(normalized, UriKind.Absolute, out var uri) &&
+                 uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = uri.AbsolutePath.TrimStart('/');
+        }
+        else
+        {
+            return false;
+        }
+
+        normalized = normalized.TrimEnd('/');
+        if (normalized.EndsWith(".git", StringComparison.OrdinalIgnoreCase))
+            normalized = normalized[..^4];
+
+        var segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length < 2) return false;
+
+        githubUrl = $"https://github.com/{segments[0]}/{segments[1]}";
+        return true;
     }
 
     private void RefreshCurrentBranch()
