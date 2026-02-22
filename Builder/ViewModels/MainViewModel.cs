@@ -228,8 +228,8 @@ public partial class MainViewModel : ObservableObject
     {
         IsBusy = true;
         _cts = new CancellationTokenSource();
-        AppendLog($"> git clone {url}");
-        AppendLog($"  → {destPath}");
+        AppendCommandLog($"> git clone {url}");
+        AppendCommandLog($"  → {destPath}");
 
         try
         {
@@ -517,7 +517,7 @@ public partial class MainViewModel : ObservableObject
 
         IsBusy = true;
         _cts = new CancellationTokenSource();
-        AppendLog($"> [アクション] {action.Name}");
+        AppendCommandLog($"> [アクション] {action.Name}");
 
         try
         {
@@ -581,7 +581,7 @@ public partial class MainViewModel : ObservableObject
     {
         IsBusy = true;
         _cts = new CancellationTokenSource();
-        AppendLog($"> {command}");
+        AppendCommandLog($"> {command}");
 
         try
         {
@@ -858,5 +858,14 @@ public partial class MainViewModel : ObservableObject
         if (SelectedProject != null)
             SelectedProject.Log = OutputLog;
         LineAppended?.Invoke(line);
+    }
+
+    /// <summary>
+    /// コマンド行をアクセントカラーの ANSI TrueColor シーケンスで色付けして追加する。
+    /// </summary>
+    private void AppendCommandLog(string commandLine)
+    {
+        var c = ParseColor(_accentColorHex);
+        AppendLog($"\x1b[38;2;{c.R};{c.G};{c.B}m{commandLine}\x1b[0m");
     }
 }
