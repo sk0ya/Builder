@@ -428,7 +428,7 @@ public partial class MainViewModel : ObservableObject
         try
         {
             _processService.LaunchDetached(SelectedProject.FolderPath, SelectedProject.LaunchCommand);
-            AppendLog($"[起動] {SelectedProject.LaunchCommand}");
+            AppendCommandLog($"> {SelectedProject.LaunchCommand}");
         }
         catch (Exception ex)
         {
@@ -521,7 +521,7 @@ public partial class MainViewModel : ObservableObject
             try
             {
                 _processService.LaunchPwshScriptDetached(SelectedProject.FolderPath, action.Script);
-                AppendLog($"[起動] {action.Name}");
+                AppendCommandLog($"> {action.Name}");
             }
             catch (Exception ex)
             {
@@ -532,7 +532,7 @@ public partial class MainViewModel : ObservableObject
 
         IsBusy = true;
         _cts = new CancellationTokenSource();
-        AppendCommandLog($"> [アクション] {action.Name}");
+        AppendCommandLog($"> {action.Name}");
 
         try
         {
