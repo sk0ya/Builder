@@ -212,6 +212,9 @@
                                     <TextBlock Text="{Binding CurrentBranch}" FontSize="12"
                                                Foreground="{DynamicResource ThemeAccent}"
                                                VerticalAlignment="Center" />
+                                    <Ellipse Width="7" Height="7" Fill="#FFA726" VerticalAlignment="Center" Margin="5,0,0,0"
+                                             Visibility="{Binding IsGitDirty, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                             ToolTip="未コミットの変更があります" />
                                     <materialDesign:PackIcon Kind="MenuDown" Width="13" Height="13"
                                                              Foreground="{DynamicResource ThemeAccent}"
                                                              VerticalAlignment="Center" />

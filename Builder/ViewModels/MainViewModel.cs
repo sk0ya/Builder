@@ -61,6 +61,9 @@ public partial class MainViewModel : ObservableObject
 
     public bool HasCurrentBranch => !string.IsNullOrEmpty(CurrentBranch);
 
+    [ObservableProperty]
+    private bool _isGitDirty;
+
     private string _backgroundColorHex = "#1E1E1E";
     private string _accentColorHex = "#4FC3F7";
 
@@ -369,6 +372,7 @@ public partial class MainViewModel : ObservableObject
 
         await RunCommandAsync(SelectedProject.FolderPath, "git fetch");
         RefreshCurrentBranch();
+        _ = RefreshGitDirtyStatusAsync();
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedProject))]
@@ -384,6 +388,7 @@ public partial class MainViewModel : ObservableObject
 
         await RunCommandAsync(SelectedProject.FolderPath, "git pull");
         RefreshCurrentBranch();
+        _ = RefreshGitDirtyStatusAsync();
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedProject))]
@@ -398,6 +403,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         await RunCommandAsync(SelectedProject.FolderPath, "git push");
+        _ = RefreshGitDirtyStatusAsync();
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedProject))]
@@ -442,6 +448,7 @@ public partial class MainViewModel : ObservableObject
         await RunCommandAsync(SelectedProject.FolderPath, $"git switch {branchName}");
         RefreshCurrentBranch();
         await RefreshBranchesAsync();
+        _ = RefreshGitDirtyStatusAsync();
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedProject))]
@@ -679,6 +686,7 @@ public partial class MainViewModel : ObservableObject
         LogReset?.Invoke(OutputLog);
         RefreshCurrentBranch();
         _ = RefreshBranchesAsync();
+        _ = RefreshGitDirtyStatusAsync();
     }
 
     private async Task RefreshBranchesAsync()
@@ -909,6 +917,41 @@ public partial class MainViewModel : ObservableObject
         catch
         {
             CurrentBranch = string.Empty;
+        }
+    }
+
+    private async Task RefreshGitDirtyStatusAsync()
+    {
+        if (SelectedProject == null || !SelectedProject.IsGitRepository)
+        {
+            IsGitDirty = false;
+            return;
+        }
+
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "git",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true,
+                WorkingDirectory = SelectedProject.FolderPath,
+                StandardOutputEncoding = Encoding.UTF8
+            };
+            psi.ArgumentList.Add("status");
+            psi.ArgumentList.Add("--porcelain");
+
+            using var process = new Process { StartInfo = psi };
+            process.Start();
+            var output = await process.StandardOutput.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            IsGitDirty = !string.IsNullOrWhiteSpace(output);
+        }
+        catch
+        {
+            IsGitDirty = false;
         }
     }
 
