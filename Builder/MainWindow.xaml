@@ -209,12 +209,23 @@
                                     <materialDesign:PackIcon Kind="SourceBranch" Width="15" Height="15"
                                                              Foreground="{DynamicResource ThemeAccent}"
                                                              VerticalAlignment="Center" Margin="0,0,4,0" />
+                                    <Ellipse Width="7" Height="7" VerticalAlignment="Center" Margin="0,0,5,0">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="#66BB6A" />
+                                                <Setter Property="ToolTip" Value="クリーン" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsGitDirty}" Value="True">
+                                                        <Setter Property="Fill" Value="#FFA726" />
+                                                        <Setter Property="ToolTip" Value="未コミットの変更があります" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
                                     <TextBlock Text="{Binding CurrentBranch}" FontSize="12"
                                                Foreground="{DynamicResource ThemeAccent}"
                                                VerticalAlignment="Center" />
-                                    <Ellipse Width="7" Height="7" Fill="#FFA726" VerticalAlignment="Center" Margin="5,0,0,0"
-                                             Visibility="{Binding IsGitDirty, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                             ToolTip="未コミットの変更があります" />
                                     <materialDesign:PackIcon Kind="MenuDown" Width="13" Height="13"
                                                              Foreground="{DynamicResource ThemeAccent}"
                                                              VerticalAlignment="Center" />
