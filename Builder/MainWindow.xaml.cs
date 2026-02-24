@@ -182,8 +182,8 @@ public partial class MainWindow : Window
         var item = FindAncestor<ListBoxItem>((DependencyObject)e.OriginalSource);
         if (item == null) return;
 
-        var project = (ProjectEntry)ProjectListBox.ItemContainerGenerator.ItemFromContainer(item);
-        if (project == null || !System.IO.Directory.Exists(project.FolderPath)) return;
+        if (ProjectListBox.ItemContainerGenerator.ItemFromContainer(item) is not ProjectEntry project) return;
+        if (!System.IO.Directory.Exists(project.FolderPath)) return;
 
         item.IsSelected = true;
         ShellContextMenu.Prepare(project.FolderPath, this);
@@ -222,8 +222,7 @@ public partial class MainWindow : Window
         var item = FindAncestor<ListBoxItem>((DependencyObject)e.OriginalSource);
         if (item == null) return;
 
-        var data = (ProjectEntry)listBox.ItemContainerGenerator.ItemFromContainer(item);
-        if (data == null) return;
+        if (listBox.ItemContainerGenerator.ItemFromContainer(item) is not ProjectEntry data) return;
 
         _isDragging = true;
         DragDrop.DoDragDrop(item, data, DragDropEffects.Move);
@@ -257,8 +256,9 @@ public partial class MainWindow : Window
         int newIndex;
         if (targetItem != null)
         {
-            var target = (ProjectEntry)ProjectListBox.ItemContainerGenerator.ItemFromContainer(targetItem);
+            if (ProjectListBox.ItemContainerGenerator.ItemFromContainer(targetItem) is not ProjectEntry target) return;
             newIndex = vm.Projects.IndexOf(target);
+            if (newIndex < 0) return;
         }
         else
         {
