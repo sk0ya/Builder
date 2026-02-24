@@ -1,13 +1,25 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using MaterialDesignThemes.Wpf;
 
 namespace Builder.Models;
 
-public class ProjectEntry
+public class ProjectEntry : INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private bool SetField<T>(ref T field, T value, [CallerMemberName] string? name = null)
+    {
+        if (Equals(field, value)) return false;
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        return true;
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name { get; set; } = string.Empty;
     public string FolderPath { get; set; } = string.Empty;
@@ -21,6 +33,37 @@ public class ProjectEntry
 
     [JsonIgnore]
     public bool IsGitRepository => Directory.Exists(Path.Combine(FolderPath, ".git"));
+
+    private int _gitAheadCount;
+    private int _gitBehindCount;
+
+    [JsonIgnore]
+    public int GitAheadCount
+    {
+        get => _gitAheadCount;
+        set
+        {
+            if (SetField(ref _gitAheadCount, value))
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasAhead)));
+        }
+    }
+
+    [JsonIgnore]
+    public int GitBehindCount
+    {
+        get => _gitBehindCount;
+        set
+        {
+            if (SetField(ref _gitBehindCount, value))
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasBehind)));
+        }
+    }
+
+    [JsonIgnore]
+    public bool HasAhead => _gitAheadCount > 0;
+
+    [JsonIgnore]
+    public bool HasBehind => _gitBehindCount > 0;
 
     [JsonIgnore]
     public PackIconKind IconKind => _iconKind ??= DetectIconKind();

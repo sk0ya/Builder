@@ -21,6 +21,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ProcessService _processService = new();
     private CancellationTokenSource? _cts;
     private readonly DispatcherTimer _filterTimer;
+    private readonly DispatcherTimer _gitSyncTimer;
 
     /// <summary>新しいログ行が追加されたときに発火（行テキストのみ、改行なし）</summary>
     public event Action<string>? LineAppended;
@@ -86,6 +87,11 @@ public partial class MainViewModel : ObservableObject
 
         LoadProjects();
         LoadTheme();
+
+        _gitSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(3) };
+        _gitSyncTimer.Tick += async (_, _) => await RefreshAllGitSyncStatusAsync();
+        _gitSyncTimer.Start();
+        _ = RefreshAllGitSyncStatusAsync();
     }
 
     private bool ProjectFilter(object item)
@@ -373,6 +379,7 @@ public partial class MainViewModel : ObservableObject
         await RunCommandAsync(SelectedProject.FolderPath, "git fetch");
         RefreshCurrentBranch();
         _ = RefreshGitDirtyStatusAsync();
+        _ = RefreshAllGitSyncStatusAsync();
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedProject))]
@@ -389,6 +396,7 @@ public partial class MainViewModel : ObservableObject
         await RunCommandAsync(SelectedProject.FolderPath, "git pull");
         RefreshCurrentBranch();
         _ = RefreshGitDirtyStatusAsync();
+        _ = RefreshAllGitSyncStatusAsync();
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedProject))]
@@ -404,6 +412,7 @@ public partial class MainViewModel : ObservableObject
 
         await RunCommandAsync(SelectedProject.FolderPath, "git push");
         _ = RefreshGitDirtyStatusAsync();
+        _ = RefreshAllGitSyncStatusAsync();
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedProject))]
@@ -952,6 +961,53 @@ public partial class MainViewModel : ObservableObject
         catch
         {
             IsGitDirty = false;
+        }
+    }
+
+    private async Task RefreshAllGitSyncStatusAsync()
+    {
+        foreach (var project in Projects.ToList())
+        {
+            if (!project.IsGitRepository) continue;
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "git",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory = project.FolderPath,
+                    StandardOutputEncoding = Encoding.UTF8
+                };
+                psi.ArgumentList.Add("rev-list");
+                psi.ArgumentList.Add("--left-right");
+                psi.ArgumentList.Add("--count");
+                psi.ArgumentList.Add("HEAD...@{upstream}");
+
+                using var process = new Process { StartInfo = psi };
+                process.Start();
+                var output = await process.StandardOutput.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode == 0)
+                {
+                    var parts = output.Trim().Split('\t');
+                    project.GitAheadCount = parts.Length > 0 && int.TryParse(parts[0], out var a) ? a : 0;
+                    project.GitBehindCount = parts.Length > 1 && int.TryParse(parts[1], out var b) ? b : 0;
+                }
+                else
+                {
+                    project.GitAheadCount = 0;
+                    project.GitBehindCount = 0;
+                }
+            }
+            catch
+            {
+                project.GitAheadCount = 0;
+                project.GitBehindCount = 0;
+            }
         }
     }
 
