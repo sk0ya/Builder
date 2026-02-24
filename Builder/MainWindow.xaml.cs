@@ -13,6 +13,7 @@ public partial class MainWindow : Window
 {
     // 行をまたいで ANSI エスケープ状態を維持するインスタンス
     private readonly AnsiState _ansiState = new();
+    private const string ProjectDragFormat = "Builder.ProjectEntryId";
 
     public MainWindow()
     {
@@ -179,7 +180,8 @@ public partial class MainWindow : Window
 
     private void ProjectList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
-        var item = FindAncestor<ListBoxItem>((DependencyObject)e.OriginalSource);
+        if (e.OriginalSource is not DependencyObject source) return;
+        var item = FindAncestor<ListBoxItem>(source);
         if (item == null) return;
 
         if (ProjectListBox.ItemContainerGenerator.ItemFromContainer(item) is not ProjectEntry project) return;
@@ -199,17 +201,29 @@ public partial class MainWindow : Window
     // --- Drag & Drop for project reordering ---
 
     private Point _dragStartPoint;
+    private string? _dragProjectId;
     private bool _isDragging;
 
     private void ProjectList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _dragStartPoint = e.GetPosition(null);
         _isDragging = false;
+        _dragProjectId = null;
+
+        if (sender is not ListBox listBox) return;
+        if (e.OriginalSource is not DependencyObject source) return;
+
+        var item = FindAncestor<ListBoxItem>(source);
+        if (item == null) return;
+        if (listBox.ItemContainerGenerator.ItemFromContainer(item) is not ProjectEntry project) return;
+
+        _dragProjectId = project.Id;
     }
 
     private void ProjectList_PreviewMouseMove(object sender, MouseEventArgs e)
     {
         if (e.LeftButton != MouseButtonState.Pressed) return;
+        if (string.IsNullOrEmpty(_dragProjectId)) return;
 
         var diff = e.GetPosition(null) - _dragStartPoint;
         if (Math.Abs(diff.X) < SystemParameters.MinimumHorizontalDragDistance &&
@@ -217,21 +231,31 @@ public partial class MainWindow : Window
             return;
 
         if (_isDragging) return;
+        if (sender is not ListBox listBox) return;
+        if (DataContext is not MainViewModel vm) return;
+        if (!vm.Projects.Any(p => string.Equals(p.Id, _dragProjectId, StringComparison.Ordinal))) return;
 
-        var listBox = (ListBox)sender;
-        var item = FindAncestor<ListBoxItem>((DependencyObject)e.OriginalSource);
-        if (item == null) return;
-
-        if (listBox.ItemContainerGenerator.ItemFromContainer(item) is not ProjectEntry data) return;
-
-        _isDragging = true;
-        DragDrop.DoDragDrop(item, data, DragDropEffects.Move);
-        _isDragging = false;
+        try
+        {
+            _isDragging = true;
+            var dragData = new DataObject();
+            dragData.SetData(ProjectDragFormat, _dragProjectId);
+            DragDrop.DoDragDrop(listBox, dragData, DragDropEffects.Move);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ProjectList_PreviewMouseMove: {ex.Message}");
+        }
+        finally
+        {
+            _isDragging = false;
+            _dragProjectId = null;
+        }
     }
 
     private void ProjectList_DragOver(object sender, DragEventArgs e)
     {
-        if (!e.Data.GetDataPresent(typeof(ProjectEntry)))
+        if (!e.Data.GetDataPresent(ProjectDragFormat))
         {
             e.Effects = DragDropEffects.None;
             e.Handled = true;
@@ -243,12 +267,17 @@ public partial class MainWindow : Window
 
     private void ProjectList_Drop(object sender, DragEventArgs e)
     {
-        if (!e.Data.GetDataPresent(typeof(ProjectEntry))) return;
-
-        var droppedData = (ProjectEntry)e.Data.GetData(typeof(ProjectEntry))!;
-        var targetItem = FindAncestor<ListBoxItem>((DependencyObject)e.OriginalSource);
-
+        if (!e.Data.GetDataPresent(ProjectDragFormat)) return;
         if (DataContext is not MainViewModel vm) return;
+        if (e.Data.GetData(ProjectDragFormat) is not string droppedProjectId ||
+            string.IsNullOrWhiteSpace(droppedProjectId))
+            return;
+        var droppedData = vm.Projects.FirstOrDefault(p => string.Equals(p.Id, droppedProjectId, StringComparison.Ordinal));
+        if (droppedData == null) return;
+
+        ListBoxItem? targetItem = null;
+        if (e.OriginalSource is DependencyObject source)
+            targetItem = FindAncestor<ListBoxItem>(source);
 
         var oldIndex = vm.Projects.IndexOf(droppedData);
         if (oldIndex < 0) return;
