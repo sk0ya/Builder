@@ -690,7 +690,12 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSelectedProjectChanged(ProjectEntry? value)
     {
-        FilteredProjects.Refresh();
+        // Defer Refresh to avoid re-entrancy: this method can be called inside a
+        // CollectionChanged event chain (e.g. ListBox.SelectionChanged during Move),
+        // and calling FilteredProjects.Refresh() synchronously there causes WPF to
+        // fire a nested CollectionChanged(Reset) while the first one is still being
+        // dispatched, crashing the ItemContainerGenerator.
+        Application.Current.Dispatcher.BeginInvoke(FilteredProjects.Refresh);
         OutputLog = value?.Log ?? string.Empty;
         LogReset?.Invoke(OutputLog);
         RefreshCurrentBranch();

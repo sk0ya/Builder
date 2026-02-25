@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using Builder.Models;
 using Builder.ViewModels;
 using MaterialDesignThemes.Wpf;
@@ -184,7 +185,7 @@ public partial class MainWindow : Window
         var item = FindAncestor<ListBoxItem>(source);
         if (item == null) return;
 
-        if (ProjectListBox.ItemContainerGenerator.ItemFromContainer(item) is not ProjectEntry project) return;
+        if (item.DataContext is not ProjectEntry project) return;
         if (!System.IO.Directory.Exists(project.FolderPath)) return;
 
         item.IsSelected = true;
@@ -215,7 +216,7 @@ public partial class MainWindow : Window
 
         var item = FindAncestor<ListBoxItem>(source);
         if (item == null) return;
-        if (listBox.ItemContainerGenerator.ItemFromContainer(item) is not ProjectEntry project) return;
+        if (item.DataContext is not ProjectEntry project) return;
 
         _dragProjectId = project.Id;
     }
@@ -285,7 +286,7 @@ public partial class MainWindow : Window
         int newIndex;
         if (targetItem != null)
         {
-            if (ProjectListBox.ItemContainerGenerator.ItemFromContainer(targetItem) is not ProjectEntry target) return;
+            if (targetItem.DataContext is not ProjectEntry target) return;
             newIndex = vm.Projects.IndexOf(target);
             if (newIndex < 0) return;
         }
@@ -306,7 +307,12 @@ public partial class MainWindow : Window
         while (current != null)
         {
             if (current is T t) return t;
-            current = VisualTreeHelper.GetParent(current);
+            // Run/Span etc. (TextBlock inlines) are DependencyObject but not Visual.
+            // VisualTreeHelper.GetParent throws for non-Visual elements, so fall back
+            // to LogicalTreeHelper which correctly walks up to the containing TextBlock.
+            current = (current is Visual or Visual3D)
+                ? VisualTreeHelper.GetParent(current)
+                : LogicalTreeHelper.GetParent(current);
         }
         return null;
     }
