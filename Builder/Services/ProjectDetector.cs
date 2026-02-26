@@ -36,7 +36,22 @@ public static class ProjectDetector
         var relativePath = Path.GetRelativePath(entry.FolderPath, csproj)
                                .Replace('\\', '/');
 
-        entry.BuildCommand = "dotnet build";
+        // .sln がルートにある場合はソリューション単位でビルド
+        // .csproj がルート直下の場合も引数不要
+        // サブフォルダにある場合はパスを指定しないとビルドできないため相対パスを付与
+        var hasSln = Directory.GetFiles(entry.FolderPath, "*.sln", SearchOption.TopDirectoryOnly).Length > 0;
+        var isAtRoot = !relativePath.Contains('/');
+        if (hasSln || isAtRoot)
+        {
+            entry.BuildCommand = "dotnet build";
+        }
+        else
+        {
+            entry.BuildCommand = relativePath.Contains(' ')
+                ? $"dotnet build \"{relativePath}\""
+                : $"dotnet build {relativePath}";
+        }
+
         entry.LaunchCommand = relativePath.Contains(' ')
             ? $"dotnet run --project \"{relativePath}\""
             : $"dotnet run --project {relativePath}";
