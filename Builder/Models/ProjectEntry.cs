@@ -25,6 +25,7 @@ public class ProjectEntry : INotifyPropertyChanged
     public string FolderPath { get; set; } = string.Empty;
     public string BuildCommand { get; set; } = string.Empty;
     public string LaunchCommand { get; set; } = string.Empty;
+    public string RemoteUrl { get; set; } = string.Empty;
 
     public ObservableCollection<ProjectAction> Actions { get; set; } = [];
 

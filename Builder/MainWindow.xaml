@@ -303,6 +303,16 @@
                         </Button>
                     </StackPanel>
 
+                    <!-- Remote URL (git 列フォールバック用) -->
+                    <TextBox Text="{Binding SelectedProject.RemoteUrl, UpdateSourceTrigger=PropertyChanged}"
+                             Visibility="{Binding HasCurrentBranch, Converter={StaticResource BooleanToVisibilityConverter}}"
+                             materialDesign:HintAssist.Hint="リモートURL（originが未設定の場合に使用）"
+                             Foreground="{DynamicResource MaterialDesignBody}"
+                             FontSize="12"
+                             FontFamily="Consolas"
+                             Margin="0,0,0,4"
+                             LostFocus="OnSettingsFieldLostFocus" />
+
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />

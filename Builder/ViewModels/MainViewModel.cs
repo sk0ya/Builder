@@ -325,7 +325,8 @@ public partial class MainViewModel : ObservableObject
                 var entry = new ProjectEntry
                 {
                     Name = projectName,
-                    FolderPath = destPath
+                    FolderPath = destPath,
+                    RemoteUrl = url
                 };
                 ProjectDetector.DetectAndApply(entry);
                 Application.Current.Dispatcher.Invoke(() =>
@@ -427,7 +428,8 @@ public partial class MainViewModel : ObservableObject
         }
 
         var remoteUrl = await GetGitOriginUrlAsync(SelectedProject.FolderPath);
-        if (!TryConvertToRepositoryPageUrl(remoteUrl, out var repositoryPageUrl))
+        if (!TryConvertToRepositoryPageUrl(remoteUrl, out var repositoryPageUrl) &&
+            !TryConvertToRepositoryPageUrl(SelectedProject.RemoteUrl, out repositoryPageUrl))
         {
             AppendLog("[エラー] origin URLからGitHub/Azure DevOpsのページを特定できませんでした。");
             return;
