@@ -291,9 +291,20 @@
                                 <TextBlock Text="Push" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
-                        <Button Command="{Binding OpenGithubPageCommand}"
+                        <Button x:Name="RepoButton"
+                                Command="{Binding OpenGithubPageCommand}"
                                 Style="{StaticResource MaterialDesignFlatButton}"
                                 Height="30" Padding="10,0" FontSize="12">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="パスをコピー"
+                                              Command="{Binding DataContext.CopyRepoPathCommand, Source={x:Reference RepoButton}}">
+                                        <MenuItem.Icon>
+                                            <materialDesign:PackIcon Kind="ContentCopy" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </Button.ContextMenu>
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Github" Width="15" Height="15"
                                                          Margin="0,0,4,0" VerticalAlignment="Center" />

@@ -416,6 +416,13 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedProject))]
+    private void CopyRepoPath()
+    {
+        Clipboard.SetText(SelectedProject!.FolderPath);
+        AppendLog($"[コピー] {SelectedProject.FolderPath}");
+    }
+
+    [RelayCommand(CanExecute = nameof(HasSelectedProject))]
     private async Task OpenGithubPage()
     {
         if (SelectedProject == null) return;
