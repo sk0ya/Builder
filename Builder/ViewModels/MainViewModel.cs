@@ -44,6 +44,7 @@ public partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(GitPullCommand))]
     [NotifyCanExecuteChangedFor(nameof(GitPushCommand))]
     [NotifyCanExecuteChangedFor(nameof(OpenGithubPageCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CopyRepoPathCommand))]
     [NotifyCanExecuteChangedFor(nameof(BuildCommand))]
     [NotifyCanExecuteChangedFor(nameof(LaunchCommand))]
     [NotifyCanExecuteChangedFor(nameof(RemoveProjectCommand))]
@@ -416,10 +417,23 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedProject))]
-    private void CopyRepoPath()
+    private async Task CopyRepoPath()
     {
-        Clipboard.SetText(SelectedProject!.FolderPath);
-        AppendLog($"[コピー] {SelectedProject.FolderPath}");
+        if (!SelectedProject!.IsGitRepository)
+        {
+            AppendLog("[エラー] このフォルダはGitリポジトリではありません。");
+            return;
+        }
+
+        var remoteUrl = await GetGitOriginUrlAsync(SelectedProject.FolderPath);
+        if (!TryConvertToRepositoryPageUrl(remoteUrl, out var repositoryPageUrl))
+        {
+            AppendLog("[エラー] origin URLからGitHub/Azure DevOpsのページを特定できませんでした。");
+            return;
+        }
+
+        Clipboard.SetText(repositoryPageUrl);
+        AppendLog($"[コピー] {repositoryPageUrl}");
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedProject))]
