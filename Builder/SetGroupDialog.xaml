@@ -25,7 +25,8 @@
                       Style="{StaticResource MaterialDesignOutlinedComboBox}"
                       materialDesign:HintAssist.Hint="グループ名（空にするとグループなし）"
                       materialDesign:HintAssist.IsFloating="True"
-                      FontSize="13" />
+                      FontSize="13"
+                      KeyDown="OnComboKeyDown" />
 
             <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="キャンセル"

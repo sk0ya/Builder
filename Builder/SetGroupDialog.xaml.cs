@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using MaterialDesignThemes.Wpf;
 
 namespace Builder;
@@ -27,5 +28,14 @@ public partial class SetGroupDialog : UserControl
     private void OnOk(object sender, RoutedEventArgs e)
     {
         DialogHost.CloseDialogCommand.Execute(true, this);
+    }
+
+    private void OnComboKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            DialogHost.CloseDialogCommand.Execute(true, this);
+            e.Handled = true;
+        }
     }
 }
