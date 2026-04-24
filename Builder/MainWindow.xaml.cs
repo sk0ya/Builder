@@ -189,7 +189,17 @@ public partial class MainWindow : Window
         if (!System.IO.Directory.Exists(project.FolderPath)) return;
 
         item.IsSelected = true;
-        ShellContextMenu.Prepare(project.FolderPath, this);
+        ShellContextMenu.Prepare(project.FolderPath, this,
+            copyRepoPathAction: () =>
+            {
+                if (DataContext is MainViewModel vm && vm.CopyRepoPathCommand.CanExecute(null))
+                    vm.CopyRepoPathCommand.Execute(null);
+            },
+            setGroupAction: () =>
+            {
+                if (DataContext is MainViewModel vm)
+                    vm.SetGroupCommand.Execute(null);
+            });
     }
 
     private void ProjectList_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
@@ -300,6 +310,27 @@ public partial class MainWindow : Window
         vm.Projects.Move(oldIndex, newIndex);
         vm.SelectedProject = droppedData;
         vm.SaveSettingsCommand.Execute(null);
+    }
+
+    private void GroupTabs_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not ListBox listBox) return;
+        var sv = FindVisualChild<ScrollViewer>(listBox);
+        if (sv == null) return;
+        sv.ScrollToHorizontalOffset(sv.HorizontalOffset - e.Delta / 3.0);
+        e.Handled = true;
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T t) return t;
+            var result = FindVisualChild<T>(child);
+            if (result != null) return result;
+        }
+        return null;
     }
 
     private static T? FindAncestor<T>(DependencyObject current) where T : DependencyObject

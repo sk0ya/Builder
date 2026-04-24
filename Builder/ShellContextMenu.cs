@@ -74,6 +74,10 @@ internal static class ShellContextMenu
     [DllImport("user32.dll")]
     private static extern int TrackPopupMenuEx(IntPtr hMenu, uint fuFlags, int x, int y, IntPtr hwnd, IntPtr lptpm);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool InsertMenu(IntPtr hMenu, uint uPosition, uint uFlags, UIntPtr uIDNewItem,
+        string? lpNewItem);
+
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
@@ -89,22 +93,31 @@ internal static class ShellContextMenu
     private const uint CMF_EXPLORE = 0x0004;
     private const uint TPM_RETURNCMD = 0x0100;
     private const uint TPM_RIGHTBUTTON = 0x0002;
+    private const uint MF_BYPOSITION = 0x0400;
+    private const uint MF_SEPARATOR = 0x0800;
+    private const uint MF_STRING = 0x0000;
+    private const int CopyRepoPathCommandId = 0x8000;
+    private const int SetGroupCommandId = 0x8001;
 
     // 右クリック押下時に準備したメニューを保持
     private static IntPtr _hMenu = IntPtr.Zero;
     private static IContextMenu? _contextMenu;
     private static IntPtr _ownerHwnd = IntPtr.Zero;
+    private static Action? _copyRepoPathAction;
+    private static Action? _setGroupAction;
 
     /// <summary>
     /// 右クリック押下時に呼ぶ。重い QueryContextMenu をここで済ませておく。
     /// </summary>
-    public static void Prepare(string path, Window owner)
+    public static void Prepare(string path, Window owner, Action? copyRepoPathAction = null, Action? setGroupAction = null)
     {
         Discard();
         try
         {
             var hwnd = new WindowInteropHelper(owner).Handle;
             _ownerHwnd = hwnd;
+            _copyRepoPathAction = copyRepoPathAction;
+            _setGroupAction = setGroupAction;
 
             SHGetDesktopFolder(out var desktopObj);
             var desktop = (IShellFolder)desktopObj;
@@ -126,6 +139,10 @@ internal static class ShellContextMenu
                 _hMenu = CreatePopupMenu();
                 // QueryContextMenu がシェル拡張を読み込む重い処理 — Down 時に実行しておく
                 _contextMenu.QueryContextMenu(_hMenu, 0, 1, 0x7FFF, CMF_NORMAL | CMF_EXPLORE);
+                InsertMenu(_hMenu, 0, MF_BYPOSITION | MF_STRING, new UIntPtr(SetGroupCommandId), "グループを設定");
+                InsertMenu(_hMenu, 1, MF_BYPOSITION | MF_STRING, new UIntPtr(CopyRepoPathCommandId),
+                    "リポジトリのパスをコピー");
+                InsertMenu(_hMenu, 2, MF_BYPOSITION | MF_SEPARATOR, UIntPtr.Zero, null);
             }
             finally
             {
@@ -154,6 +171,17 @@ internal static class ShellContextMenu
 
             if (cmd > 0)
             {
+                if (cmd == SetGroupCommandId)
+                {
+                    _setGroupAction?.Invoke();
+                    return;
+                }
+                if (cmd == CopyRepoPathCommandId)
+                {
+                    _copyRepoPathAction?.Invoke();
+                    return;
+                }
+
                 var ici = new CMINVOKECOMMANDINFO
                 {
                     cbSize = Marshal.SizeOf<CMINVOKECOMMANDINFO>(),
@@ -186,5 +214,7 @@ internal static class ShellContextMenu
         }
         _contextMenu = null;
         _ownerHwnd = IntPtr.Zero;
+        _copyRepoPathAction = null;
+        _setGroupAction = null;
     }
 }

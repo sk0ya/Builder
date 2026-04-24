@@ -101,8 +101,68 @@
                                 ToolTip="削除" Width="26" Height="26" Margin="2,0,0,0">
                             <materialDesign:PackIcon Kind="Minus" Width="16" Height="16" Foreground="{DynamicResource ThemeSubText}" />
                         </Button>
+                        <Button Style="{StaticResource MaterialDesignToolButton}"
+                                Command="{Binding OpenGroupManagementCommand}"
+                                ToolTip="グループ管理" Width="26" Height="26" Margin="2,0,0,0">
+                            <materialDesign:PackIcon Kind="LabelMultipleOutline" Width="15" Height="15" Foreground="{DynamicResource ThemeSubText}" />
+                        </Button>
                     </StackPanel>
                 </DockPanel>
+
+                <!-- Group Filter Tabs -->
+                <Border DockPanel.Dock="Top"
+                        BorderThickness="0,0,0,1"
+                        BorderBrush="{DynamicResource ThemeSplitter}">
+                    <ListBox ItemsSource="{Binding GroupTabs}"
+                             SelectedItem="{Binding SelectedGroupFilter}"
+                             Background="Transparent" BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Hidden"
+                             ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                             PreviewMouseWheel="GroupTabs_PreviewMouseWheel">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="12,7" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeMutedText}" />
+                                <Setter Property="FontSize" Value="12" />
+                                <Setter Property="Cursor" Value="Hand" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border x:Name="Bd"
+                                                    Padding="{TemplateBinding Padding}"
+                                                    Background="Transparent"
+                                                    BorderThickness="0,0,0,2"
+                                                    BorderBrush="Transparent">
+                                                <ContentPresenter />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource ThemeAccent}" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource ThemeAccent}" />
+                                                </Trigger>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource GroupTabLabelConverter}}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
 
                 <!-- Filter TextBox -->
                 <Grid DockPanel.Dock="Top" Margin="10,0,10,6">
@@ -138,6 +198,29 @@
                          Drop="ProjectList_Drop"
                          DragOver="ProjectList_DragOver"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.ContainerStyle>
+                                <Style TargetType="GroupItem">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="GroupItem">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}"
+                                                               Visibility="{Binding Name, Converter={StaticResource StringNotEmptyToVisibilityConverter}}"
+                                                               FontSize="10"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource ThemeMutedText}"
+                                                               Margin="14,8,0,2" />
+                                                    <ItemsPresenter />
+                                                </StackPanel>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </GroupStyle.ContainerStyle>
+                        </GroupStyle>
+                    </ListBox.GroupStyle>
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
                             <Setter Property="Padding" Value="10,6" />
@@ -296,9 +379,9 @@
                                 Style="{StaticResource MaterialDesignFlatButton}"
                                 Height="30" Padding="10,0" FontSize="12">
                             <Button.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Header="パスをコピー"
-                                              Command="{Binding DataContext.CopyRepoPathCommand, Source={x:Reference RepoButton}}">
+                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                    <MenuItem Header="リポジトリのパスをコピー"
+                                              Command="{Binding CopyRepoPathCommand}">
                                         <MenuItem.Icon>
                                             <materialDesign:PackIcon Kind="ContentCopy" />
                                         </MenuItem.Icon>

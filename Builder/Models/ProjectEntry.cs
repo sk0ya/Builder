@@ -23,6 +23,7 @@ public class ProjectEntry : INotifyPropertyChanged
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name { get; set; } = string.Empty;
     public string FolderPath { get; set; } = string.Empty;
+    public string Group { get; set; } = string.Empty;
     public string BuildCommand { get; set; } = string.Empty;
     public string LaunchCommand { get; set; } = string.Empty;
 

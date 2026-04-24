@@ -30,12 +30,16 @@ public partial class MainViewModel : ObservableObject
     public event Action<string>? LogReset;
 
     public ObservableCollection<ProjectEntry> Projects { get; } = [];
+    public ObservableCollection<string> GroupTabs { get; } = [];
 
     [ObservableProperty]
     private string _filterText = string.Empty;
 
     [ObservableProperty]
     private string _highlightText = string.Empty;
+
+    [ObservableProperty]
+    private string _selectedGroupFilter = string.Empty;
 
     public ICollectionView FilteredProjects { get; }
 
@@ -77,6 +81,7 @@ public partial class MainViewModel : ObservableObject
     {
         FilteredProjects = CollectionViewSource.GetDefaultView(Projects);
         FilteredProjects.Filter = ProjectFilter;
+        FilteredProjects.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ProjectEntry.Group)));
 
         _filterTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
         _filterTimer.Tick += (_, _) =>
@@ -87,6 +92,8 @@ public partial class MainViewModel : ObservableObject
         };
 
         LoadProjects();
+        Projects.CollectionChanged += (_, _) => RefreshGroupTabs();
+        RefreshGroupTabs();
         LoadTheme();
 
         _gitSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(3) };
@@ -99,9 +106,31 @@ public partial class MainViewModel : ObservableObject
     {
         if (item is not ProjectEntry project) return false;
         if (project == SelectedProject) return true;
+        if (!string.IsNullOrEmpty(SelectedGroupFilter) && project.Group != SelectedGroupFilter)
+            return false;
         if (string.IsNullOrWhiteSpace(FilterText)) return true;
         return project.Name.Contains(FilterText, StringComparison.OrdinalIgnoreCase) ||
                project.FolderPath.Contains(FilterText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    partial void OnSelectedGroupFilterChanged(string value)
+    {
+        FilteredProjects.Refresh();
+    }
+
+    private void RefreshGroupTabs()
+    {
+        var current = SelectedGroupFilter;
+        GroupTabs.Clear();
+        GroupTabs.Add(string.Empty);
+        foreach (var g in ExistingGroups)
+            GroupTabs.Add(g);
+
+        var next = GroupTabs.Contains(current) ? current : string.Empty;
+        if (SelectedGroupFilter == next)
+            FilteredProjects.Refresh();
+        else
+            SelectedGroupFilter = next;
     }
 
     partial void OnFilterTextChanged(string value)
@@ -659,6 +688,39 @@ public partial class MainViewModel : ObservableObject
             action.Script = view.Script;
             action.LaunchOnly = view.LaunchOnly;
             OnPropertyChanged(nameof(SelectedProject));
+            SaveProjects();
+        }
+    }
+
+    public IEnumerable<string> ExistingGroups =>
+        Projects.Select(p => p.Group).Where(g => !string.IsNullOrEmpty(g)).Distinct().OrderBy(g => g);
+
+    [RelayCommand]
+    private async Task SetGroup()
+    {
+        if (SelectedProject == null) return;
+
+        var view = new SetGroupDialog { GroupName = SelectedProject.Group };
+        view.SetExistingGroups(ExistingGroups);
+        var result = await DialogHost.Show(view, "RootDialog");
+        if (result is true)
+        {
+            SelectedProject.Group = view.GroupName.Trim();
+            RefreshGroupTabs();
+            SaveProjects();
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenGroupManagement()
+    {
+        var view = new GroupManagementDialog(Projects, ExistingGroups);
+        var result = await DialogHost.Show(view, "RootDialog");
+        if (result is true)
+        {
+            foreach (var item in view.Items)
+                item.Project.Group = item.Group.Trim();
+            RefreshGroupTabs();
             SaveProjects();
         }
     }
