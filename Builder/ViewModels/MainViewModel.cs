@@ -19,9 +19,11 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly SettingsService _settingsService = new();
     private readonly ProcessService _processService = new();
+    private AppSettings _appSettings = null!;
     private CancellationTokenSource? _cts;
     private readonly DispatcherTimer _filterTimer;
     private readonly DispatcherTimer _gitSyncTimer;
+    private readonly SemaphoreSlim _gitSyncLock = new(1, 1);
 
     /// <summary>新しいログ行が追加されたときに発火（行テキストのみ、改行なし）</summary>
     public event Action<string>? LineAppended;
@@ -91,6 +93,7 @@ public partial class MainViewModel : ObservableObject
             FilteredProjects.Refresh();
         };
 
+        _appSettings = _settingsService.Load();
         LoadProjects();
         Projects.CollectionChanged += (_, _) => RefreshGroupTabs();
         RefreshGroupTabs();
@@ -147,9 +150,8 @@ public partial class MainViewModel : ObservableObject
 
     private void LoadTheme()
     {
-        var settings = _settingsService.Load();
-        _backgroundColorHex = settings.BackgroundColor;
-        _accentColorHex = settings.AccentColor;
+        _backgroundColorHex = _appSettings.BackgroundColor;
+        _accentColorHex = _appSettings.AccentColor;
         ApplyTheme();
     }
 
@@ -212,19 +214,17 @@ public partial class MainViewModel : ObservableObject
 
     private void LoadProjects()
     {
-        var settings = _settingsService.Load();
         Projects.Clear();
-        foreach (var p in settings.Projects)
+        foreach (var p in _appSettings.Projects)
             Projects.Add(p);
     }
 
     private void SaveProjects()
     {
-        var settings = _settingsService.Load();
-        settings.Projects = [.. Projects];
-        settings.BackgroundColor = _backgroundColorHex;
-        settings.AccentColor = _accentColorHex;
-        _settingsService.Save(settings);
+        _appSettings.Projects = [.. Projects];
+        _appSettings.BackgroundColor = _backgroundColorHex;
+        _appSettings.AccentColor = _accentColorHex;
+        _settingsService.Save(_appSettings);
     }
 
     [RelayCommand]
@@ -278,8 +278,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task AddProjectFromGithub()
     {
-        var settings = _settingsService.Load();
-        var view = new GitCloneDialog(settings.LastCloneParentFolder);
+        var view = new GitCloneDialog(_appSettings.LastCloneParentFolder);
         var result = await DialogHost.Show(view, "RootDialog");
         if (result is not true) return;
 
@@ -287,8 +286,8 @@ public partial class MainViewModel : ObservableObject
         var destPath = view.DestinationPath;
 
         // 親フォルダを保存
-        settings.LastCloneParentFolder = view.ParentFolder;
-        _settingsService.Save(settings);
+        _appSettings.LastCloneParentFolder = view.ParentFolder;
+        _settingsService.Save(_appSettings);
         var projectName = Path.GetFileName(destPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         if (string.IsNullOrEmpty(projectName))
             projectName = GitCloneDialog.ExtractRepoName(url);
@@ -1054,48 +1053,60 @@ public partial class MainViewModel : ObservableObject
 
     private async Task RefreshAllGitSyncStatusAsync()
     {
-        foreach (var project in Projects.ToList())
+        if (!await _gitSyncLock.WaitAsync(0)) return;
+        try
         {
-            if (!project.IsGitRepository) continue;
-            try
+            var tasks = Projects.ToList()
+                .Where(p => p.IsGitRepository)
+                .Select(RefreshGitSyncStatusForProjectAsync);
+            await Task.WhenAll(tasks);
+        }
+        finally
+        {
+            _gitSyncLock.Release();
+        }
+    }
+
+    private async Task RefreshGitSyncStatusForProjectAsync(ProjectEntry project)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
             {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "git",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true,
-                    WorkingDirectory = project.FolderPath,
-                    StandardOutputEncoding = Encoding.UTF8
-                };
-                psi.ArgumentList.Add("rev-list");
-                psi.ArgumentList.Add("--left-right");
-                psi.ArgumentList.Add("--count");
-                psi.ArgumentList.Add("HEAD...@{upstream}");
+                FileName = "git",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = false,
+                CreateNoWindow = true,
+                WorkingDirectory = project.FolderPath,
+                StandardOutputEncoding = Encoding.UTF8
+            };
+            psi.ArgumentList.Add("rev-list");
+            psi.ArgumentList.Add("--left-right");
+            psi.ArgumentList.Add("--count");
+            psi.ArgumentList.Add("HEAD...@{upstream}");
 
-                using var process = new Process { StartInfo = psi };
-                process.Start();
-                var output = await process.StandardOutput.ReadToEndAsync();
-                await process.WaitForExitAsync();
+            using var process = new Process { StartInfo = psi };
+            process.Start();
+            var output = await process.StandardOutput.ReadToEndAsync();
+            await process.WaitForExitAsync();
 
-                if (process.ExitCode == 0)
-                {
-                    var parts = output.Trim().Split('\t');
-                    project.GitAheadCount = parts.Length > 0 && int.TryParse(parts[0], out var a) ? a : 0;
-                    project.GitBehindCount = parts.Length > 1 && int.TryParse(parts[1], out var b) ? b : 0;
-                }
-                else
-                {
-                    project.GitAheadCount = 0;
-                    project.GitBehindCount = 0;
-                }
+            if (process.ExitCode == 0)
+            {
+                var parts = output.Trim().Split('\t');
+                project.GitAheadCount = parts.Length > 0 && int.TryParse(parts[0], out var a) ? a : 0;
+                project.GitBehindCount = parts.Length > 1 && int.TryParse(parts[1], out var b) ? b : 0;
             }
-            catch
+            else
             {
                 project.GitAheadCount = 0;
                 project.GitBehindCount = 0;
             }
+        }
+        catch
+        {
+            project.GitAheadCount = 0;
+            project.GitBehindCount = 0;
         }
     }
 

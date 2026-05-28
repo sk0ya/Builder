@@ -75,9 +75,9 @@ public class ProjectEntry : INotifyPropertyChanged
     {
         if (!Directory.Exists(FolderPath)) return PackIconKind.CodeBraces;
 
-        // .csproj/.sln → C#
-        if (Directory.GetFiles(FolderPath, "*.csproj", SearchOption.AllDirectories).Length > 0 ||
-            Directory.GetFiles(FolderPath, "*.sln", SearchOption.TopDirectoryOnly).Length > 0)
+        // .csproj/.sln → C#（.sln を先に確認してショートサーキット、なければ .csproj をサブディレクトリまで探す）
+        if (Directory.GetFiles(FolderPath, "*.sln", SearchOption.TopDirectoryOnly).Length > 0 ||
+            Directory.GetFiles(FolderPath, "*.csproj", SearchOption.AllDirectories).Length > 0)
             return PackIconKind.LanguageCsharp;
 
         var topFiles = Directory.GetFiles(FolderPath, "*", SearchOption.TopDirectoryOnly)
