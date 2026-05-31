@@ -1,4 +1,5 @@
 using System.IO;
+using System.Xml.Linq;
 using Builder.Models;
 
 namespace Builder.Services;
@@ -27,10 +28,12 @@ public static class ProjectDetector
         var csprojFiles = Directory.GetFiles(entry.FolderPath, "*.csproj", SearchOption.AllDirectories);
         if (csprojFiles.Length == 0) return false;
 
-        // ルートフォルダ名と同名フォルダ内の .csproj を優先、なければパスが短いものを優先
+        // exe を起動する .csproj を優先し、その中でルートフォルダ名と同名フォルダ内の .csproj、
+        // なければパスが短いものを優先
         var rootName = Path.GetFileName(entry.FolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         var csproj = csprojFiles
-            .OrderBy(f => Path.GetFileName(Path.GetDirectoryName(f)) == rootName ? 0 : 1)
+            .OrderBy(f => IsExecutableProject(f) ? 0 : 1)
+            .ThenBy(f => Path.GetFileName(Path.GetDirectoryName(f)) == rootName ? 0 : 1)
             .ThenBy(f => f.Length)
             .First();
         var relativePath = Path.GetRelativePath(entry.FolderPath, csproj)
@@ -57,6 +60,26 @@ public static class ProjectDetector
             : $"dotnet run --project {relativePath}";
 
         return true;
+    }
+
+    private static bool IsExecutableProject(string csprojPath)
+    {
+        try
+        {
+            var document = XDocument.Load(csprojPath);
+            var outputType = document
+                .Descendants()
+                .Where(e => e.Name.LocalName == "OutputType")
+                .Select(e => e.Value.Trim())
+                .FirstOrDefault();
+
+            return string.Equals(outputType, "Exe", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(outputType, "WinExe", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     // Node.js (package.json)
