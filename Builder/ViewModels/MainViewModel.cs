@@ -308,10 +308,11 @@ public partial class MainViewModel : ObservableObject
 
     private async Task RunGitCloneAsync(string url, string destPath, string projectName)
     {
+        var project = SelectedProject;
         IsBusy = true;
         _cts = new CancellationTokenSource();
-        AppendCommandLog($"> git clone {url}");
-        AppendCommandLog($"  → {destPath}");
+        AppendCommandLog($"> git clone {url}", project);
+        AppendCommandLog($"  → {destPath}", project);
 
         try
         {
@@ -335,11 +336,11 @@ public partial class MainViewModel : ObservableObject
 
             process.OutputDataReceived += (_, e) =>
             {
-                if (e.Data != null) Application.Current.Dispatcher.Invoke(() => AppendLog(e.Data));
+                if (e.Data != null) Application.Current.Dispatcher.Invoke(() => AppendLog(e.Data, project));
             };
             process.ErrorDataReceived += (_, e) =>
             {
-                if (e.Data != null) Application.Current.Dispatcher.Invoke(() => AppendLog(e.Data));
+                if (e.Data != null) Application.Current.Dispatcher.Invoke(() => AppendLog(e.Data, project));
             };
 
             process.Start();
@@ -363,20 +364,20 @@ public partial class MainViewModel : ObservableObject
                     SelectedProject = entry;
                     SaveProjects();
                 });
-                AppendLog($"[完了] プロジェクト「{projectName}」を追加しました。");
+                AppendLog($"[完了] プロジェクト「{projectName}」を追加しました。", entry);
             }
             else if (process.ExitCode != 0)
             {
-                AppendLog($"[エラー] git clone が失敗しました (終了コード: {process.ExitCode})");
+                AppendLog($"[エラー] git clone が失敗しました (終了コード: {process.ExitCode})", project);
             }
         }
         catch (OperationCanceledException)
         {
-            AppendLog("[キャンセル]");
+            AppendLog("[キャンセル]", project);
         }
         catch (Exception ex)
         {
-            AppendLog($"[エラー] {ex.Message}");
+            AppendLog($"[エラー] {ex.Message}", project);
         }
         finally
         {
@@ -534,15 +535,16 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
+        var project = SelectedProject;
         try
         {
-            _processService.LaunchDetached(SelectedProject.FolderPath, SelectedProject.LaunchCommand,
-                line => Application.Current.Dispatcher.Invoke(() => AppendLog(line)));
-            AppendCommandLog($"> {SelectedProject.LaunchCommand}");
+            _processService.LaunchDetached(project.FolderPath, project.LaunchCommand,
+                line => Application.Current.Dispatcher.Invoke(() => AppendLog(line, project)));
+            AppendCommandLog($"> {project.LaunchCommand}", project);
         }
         catch (Exception ex)
         {
-            AppendLog($"[エラー] {ex.Message}");
+            AppendLog($"[エラー] {ex.Message}", project);
         }
     }
 
@@ -557,20 +559,21 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
+        var project = SelectedProject;
         try
         {
-            _processService.LaunchElevated(SelectedProject.FolderPath, SelectedProject.LaunchCommand,
-                line => Application.Current.Dispatcher.Invoke(() => AppendLog(line)));
-            AppendCommandLog($"> {SelectedProject.LaunchCommand} (管理者として実行)");
-            AppendLog("[情報] UAC の確認画面を表示します。承認後の出力はログに表示されません。");
+            _processService.LaunchElevated(project.FolderPath, project.LaunchCommand,
+                line => Application.Current.Dispatcher.Invoke(() => AppendLog(line, project)));
+            AppendCommandLog($"> {project.LaunchCommand} (管理者として実行)", project);
+            AppendLog("[情報] UAC の確認画面を表示します。承認後の出力はログに表示されません。", project);
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) // ERROR_CANCELLED: ユーザーがUACを拒否
         {
-            AppendLog("[キャンセル] 管理者権限への昇格がキャンセルされました。");
+            AppendLog("[キャンセル] 管理者権限への昇格がキャンセルされました。", project);
         }
         catch (Exception ex)
         {
-            AppendLog($"[エラー] {ex.Message}");
+            AppendLog($"[エラー] {ex.Message}", project);
         }
     }
 
@@ -654,40 +657,42 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
+        var project = SelectedProject;
+
         if (action.LaunchOnly)
         {
             try
             {
-                _processService.LaunchPwshScriptDetached(SelectedProject.FolderPath, action.Script);
-                AppendCommandLog($"> {action.Name}");
+                _processService.LaunchPwshScriptDetached(project.FolderPath, action.Script);
+                AppendCommandLog($"> {action.Name}", project);
             }
             catch (Exception ex)
             {
-                AppendLog($"[エラー] {ex.Message}");
+                AppendLog($"[エラー] {ex.Message}", project);
             }
             return;
         }
 
         IsBusy = true;
         _cts = new CancellationTokenSource();
-        AppendCommandLog($"> {action.Name}");
+        AppendCommandLog($"> {action.Name}", project);
 
         try
         {
-            await _processService.RunPwshScriptAsync(SelectedProject.FolderPath, action.Script, line =>
+            await _processService.RunPwshScriptAsync(project.FolderPath, action.Script, line =>
             {
-                Application.Current.Dispatcher.Invoke(() => AppendLog(line));
+                Application.Current.Dispatcher.Invoke(() => AppendLog(line, project));
             }, _cts.Token);
 
-            AppendLog("[完了]");
+            AppendLog("[完了]", project);
         }
         catch (OperationCanceledException)
         {
-            AppendLog("[キャンセル]");
+            AppendLog("[キャンセル]", project);
         }
         catch (Exception ex)
         {
-            AppendLog($"[エラー] {ex.Message}");
+            AppendLog($"[エラー] {ex.Message}", project);
         }
         finally
         {
@@ -765,26 +770,27 @@ public partial class MainViewModel : ObservableObject
 
     private async Task RunCommandAsync(string workingDir, string command)
     {
+        var project = SelectedProject;
         IsBusy = true;
         _cts = new CancellationTokenSource();
-        AppendCommandLog($"> {command}");
+        AppendCommandLog($"> {command}", project);
 
         try
         {
             await _processService.RunAsync(workingDir, command, line =>
             {
-                Application.Current.Dispatcher.Invoke(() => AppendLog(line));
+                Application.Current.Dispatcher.Invoke(() => AppendLog(line, project));
             }, _cts.Token);
 
-            AppendLog("[完了]");
+            AppendLog("[完了]", project);
         }
         catch (OperationCanceledException)
         {
-            AppendLog("[キャンセル]");
+            AppendLog("[キャンセル]", project);
         }
         catch (Exception ex)
         {
-            AppendLog($"[エラー] {ex.Message}");
+            AppendLog($"[エラー] {ex.Message}", project);
         }
         finally
         {
@@ -1139,20 +1145,38 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private void AppendLog(string line)
+    private void AppendLog(string line) => AppendLog(line, SelectedProject);
+
+    /// <summary>
+    /// ログ行を <paramref name="owner"/> プロジェクトに追加する。owner が現在選択中のタブと
+    /// 一致する場合のみ画面表示用の OutputLog / LineAppended に反映し、非選択タブで実行中の
+    /// コマンド出力が別プロジェクトの表示に混入しないようにする。
+    /// </summary>
+    private void AppendLog(string line, ProjectEntry? owner)
     {
-        OutputLog += line + Environment.NewLine;
-        if (SelectedProject != null)
-            SelectedProject.Log = OutputLog;
-        LineAppended?.Invoke(line);
+        if (owner == null)
+        {
+            OutputLog += line + Environment.NewLine;
+            LineAppended?.Invoke(line);
+            return;
+        }
+
+        owner.Log += line + Environment.NewLine;
+        if (owner == SelectedProject)
+        {
+            OutputLog = owner.Log;
+            LineAppended?.Invoke(line);
+        }
     }
 
     /// <summary>
     /// コマンド行をアクセントカラーの ANSI TrueColor シーケンスで色付けして追加する。
     /// </summary>
-    private void AppendCommandLog(string commandLine)
+    private void AppendCommandLog(string commandLine) => AppendCommandLog(commandLine, SelectedProject);
+
+    private void AppendCommandLog(string commandLine, ProjectEntry? owner)
     {
         var c = ParseColor(_accentColorHex);
-        AppendLog($"\x1b[38;2;{c.R};{c.G};{c.B}m{commandLine}\x1b[0m");
+        AppendLog($"\x1b[38;2;{c.R};{c.G};{c.B}m{commandLine}\x1b[0m", owner);
     }
 }
