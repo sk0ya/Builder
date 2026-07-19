@@ -54,6 +54,7 @@ public partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(BuildCommand))]
     [NotifyCanExecuteChangedFor(nameof(LaunchCommand))]
     [NotifyCanExecuteChangedFor(nameof(RemoveProjectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RebuildAndRestartSelfCommand))]
     [NotifyPropertyChangedFor(nameof(HasSelectedProject))]
     private ProjectEntry? _selectedProject;
 
@@ -576,6 +577,30 @@ public partial class MainViewModel : ObservableObject
             AppendLog($"[エラー] {ex.Message}", project);
         }
     }
+
+    /// <summary>
+    /// Builder自身（自分がビルドされたリポジトリ）のプロジェクトが選択されている場合のみ有効。
+    /// dotnet buildは実行中のexe/pdbを上書きできず失敗するため、
+    /// 「自分を終了 → ビルド → 再起動」を行う専用スクリプトをdetach起動する。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanRebuildAndRestartSelf))]
+    private void RebuildAndRestartSelf()
+    {
+        if (SelectedProject is not { IsSelf: true } project) return;
+
+        try
+        {
+            var script = SelfProjectDetector.BuildRebuildRestartScript(project.FolderPath);
+            _processService.LaunchPwshScriptDetached(project.FolderPath, script);
+            AppendCommandLog("> ビルド&再起動", project);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"[エラー] {ex.Message}", project);
+        }
+    }
+
+    private bool CanRebuildAndRestartSelf() => SelectedProject?.IsSelf == true;
 
     [RelayCommand]
     private void SaveSettings()

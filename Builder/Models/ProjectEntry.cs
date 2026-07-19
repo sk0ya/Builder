@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
+using Builder.Services;
 using MaterialDesignThemes.Wpf;
 
 namespace Builder.Models;
@@ -34,6 +35,9 @@ public class ProjectEntry : INotifyPropertyChanged
 
     [JsonIgnore]
     public bool IsGitRepository => Directory.Exists(Path.Combine(FolderPath, ".git"));
+
+    [JsonIgnore]
+    public bool IsSelf => SelfProjectDetector.IsSelf(this);
 
     private int _gitAheadCount;
     private int _gitBehindCount;
