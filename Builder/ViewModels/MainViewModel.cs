@@ -536,8 +536,37 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            _processService.LaunchDetached(SelectedProject.FolderPath, SelectedProject.LaunchCommand);
+            _processService.LaunchDetached(SelectedProject.FolderPath, SelectedProject.LaunchCommand,
+                line => Application.Current.Dispatcher.Invoke(() => AppendLog(line)));
             AppendCommandLog($"> {SelectedProject.LaunchCommand}");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"[エラー] {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private void LaunchAsAdmin()
+    {
+        if (SelectedProject == null) return;
+
+        if (string.IsNullOrWhiteSpace(SelectedProject.LaunchCommand))
+        {
+            AppendLog("[エラー] 起動コマンドが設定されていません。");
+            return;
+        }
+
+        try
+        {
+            _processService.LaunchElevated(SelectedProject.FolderPath, SelectedProject.LaunchCommand,
+                line => Application.Current.Dispatcher.Invoke(() => AppendLog(line)));
+            AppendCommandLog($"> {SelectedProject.LaunchCommand} (管理者として実行)");
+            AppendLog("[情報] UAC の確認画面を表示します。承認後の出力はログに表示されません。");
+        }
+        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) // ERROR_CANCELLED: ユーザーがUACを拒否
+        {
+            AppendLog("[キャンセル] 管理者権限への昇格がキャンセルされました。");
         }
         catch (Exception ex)
         {

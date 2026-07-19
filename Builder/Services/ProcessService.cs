@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -33,21 +34,149 @@ public class ProcessService
         await RunScriptCoreAsync(workingDirectory, script, onOutput, ct);
     }
 
-    public void LaunchDetached(string workingDirectory, string command)
+    // CreateProcess が管理者権限必須のプロセスを起動しようとした際に返す Win32 エラーコード。
+    private const int ErrorElevationRequired = 740;
+
+    /// <summary>
+    /// 起動コマンドをバックグラウンドで実行する。
+    /// dotnet run のように、起動対象自体は昇格不要でも内部で起動する
+    /// 実行ファイルが管理者権限を要求するケースがあるため、標準出力/標準エラーを
+    /// キャプチャして onOutput に流す（そうしないと失敗時に何もログに残らない）。
+    /// コマンド自体（parts[0]）が管理者権限を要求する場合は CreateProcess が
+    /// ERROR_ELEVATION_REQUIRED で失敗するため、UAC 経由での起動にフォールバックする。
+    /// </summary>
+    public void LaunchDetached(string workingDirectory, string command, Action<string>? onOutput = null)
     {
         var parts = ParseCommand(command);
         if (parts.Length == 0) return;
 
+        var arguments = parts.Length > 1 ? string.Join(' ', parts[1..]) : "";
+
         var psi = new ProcessStartInfo
         {
             FileName = parts[0],
-            Arguments = parts.Length > 1 ? string.Join(' ', parts[1..]) : "",
+            Arguments = arguments,
             WorkingDirectory = workingDirectory,
             UseShellExecute = false,
-            CreateNoWindow = true
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8
         };
 
-        Process.Start(psi);
+        Process process;
+        try
+        {
+            process = Process.Start(psi) ?? throw new InvalidOperationException("プロセスを起動できませんでした。");
+        }
+        catch (Win32Exception ex) when (ex.NativeErrorCode == ErrorElevationRequired)
+        {
+            onOutput?.Invoke("[警告] 管理者権限が必要なため、UAC の確認画面を表示します（承認後の出力はログに表示されません）。");
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = parts[0],
+                Arguments = arguments,
+                WorkingDirectory = workingDirectory,
+                UseShellExecute = true,
+                Verb = "runas"
+            });
+            return;
+        }
+
+        if (onOutput == null)
+        {
+            process.Dispose();
+            return;
+        }
+
+        process.OutputDataReceived += (_, e) => { if (e.Data != null) onOutput(e.Data); };
+        process.ErrorDataReceived += (_, e) => { if (e.Data != null) onOutput(e.Data); };
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+
+        _ = MonitorDetachedAsync(process, onOutput);
+    }
+
+    private static async Task MonitorDetachedAsync(Process process, Action<string> onOutput)
+    {
+        try
+        {
+            await process.WaitForExitAsync();
+            if (process.ExitCode != 0)
+                onOutput($"[Process exited with code {process.ExitCode}]");
+        }
+        catch (Exception ex)
+        {
+            onOutput($"[エラー] {ex.Message}");
+        }
+        finally
+        {
+            process.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// 起動コマンドを管理者権限（UAC 昇格）で起動する。
+    /// ShellExecute 経由になるため標準出力/標準エラーはキャプチャできない。
+    /// </summary>
+    public void LaunchElevated(string workingDirectory, string command, Action<string>? onOutput = null)
+    {
+        var parts = ParseCommand(command);
+        if (parts.Length == 0) return;
+
+        var arguments = parts.Length > 1 ? string.Join(' ', DisableDotnetBuildServers(parts)) : "";
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = parts[0],
+            Arguments = arguments,
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = true,
+            Verb = "runas",
+            WindowStyle = ProcessWindowStyle.Hidden
+        };
+
+        var process = Process.Start(psi);
+
+        // 標準出力はキャプチャできないため（昇格プロセスとの間でパイプを共有できない）、
+        // せめて終了だけは検知してログに残す。ウィンドウが無いままプロセスが
+        // 見えなくなる（実質的なゾンビ化）のを防ぐため。
+        if (process != null && onOutput != null)
+            _ = MonitorElevatedAsync(process, onOutput);
+    }
+
+    /// <summary>
+    /// dotnet build/test/publish/restore/run を管理者権限で実行すると、MSBuild のノード再利用や
+    /// Roslyn の共有コンパイラサーバー（VBCSCompiler.exe）が管理者権限のまま常駐プロセスとして
+    /// 残ってしまう。Builder は非管理者権限のため、これらを検知・終了させる手段が無いので、
+    /// そもそも常駐プロセスを生成させないようにフラグを付与する。
+    /// </summary>
+    private static string[] DisableDotnetBuildServers(string[] parts)
+    {
+        var args = parts[1..];
+
+        if (!parts[0].Equals("dotnet", StringComparison.OrdinalIgnoreCase) ||
+            args.Length == 0 ||
+            args[0].ToLowerInvariant() is not ("build" or "test" or "publish" or "restore" or "run"))
+        {
+            return args;
+        }
+
+        return [.. args, "-nodeReuse:false", "-p:UseSharedCompilation=false"];
+    }
+
+    private static async Task MonitorElevatedAsync(Process process, Action<string> onOutput)
+    {
+        try
+        {
+            await process.WaitForExitAsync();
+            onOutput($"[終了] 管理者権限で起動したプロセスが終了しました (終了コード: {process.ExitCode})");
+        }
+        finally
+        {
+            process.Dispose();
+        }
     }
 
     public void LaunchPwshScriptDetached(string workingDirectory, string script)

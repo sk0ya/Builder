@@ -444,6 +444,12 @@
                             </StackPanel>
                         </Button>
 
+                        <Button Command="{Binding LaunchAsAdminCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Height="30" Padding="10,0" FontSize="12">
+                            <TextBlock Text="管理者として起動" VerticalAlignment="Center" />
+                        </Button>
+
                         <Button Command="{Binding OpenFolderCommand}"
                                 Style="{StaticResource MaterialDesignToolButton}"
                                 ToolTip="フォルダを開く" Width="28" Height="28">
