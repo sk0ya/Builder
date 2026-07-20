@@ -255,7 +255,14 @@
                                 <StackPanel Grid.Column="1">
                                     <DockPanel>
                                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Ellipse Width="7" Height="7" Margin="0,0,4,0"
+                                            <Button Style="{StaticResource MaterialDesignToolButton}"
+                                                    Command="{Binding DataContext.StopProjectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="停止" Width="20" Height="20" Padding="0"
+                                                    Visibility="{Binding CanRebuildAndRestart, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <materialDesign:PackIcon Kind="Stop" Width="12" Height="12" Foreground="#C62828" />
+                                            </Button>
+                                            <Ellipse Width="7" Height="7" Margin="4,0,4,0"
                                                      VerticalAlignment="Center"
                                                      Fill="#66BB6A"
                                                      ToolTip="実行中"

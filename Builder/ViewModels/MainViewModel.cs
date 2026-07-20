@@ -657,27 +657,7 @@ public partial class MainViewModel : ObservableObject
 
         AppendCommandLog("> ビルド&再起動", project);
 
-        foreach (var pid in state.Pids)
-        {
-            try
-            {
-                using var proc = Process.GetProcessById(pid);
-                proc.Kill(entireProcessTree: true);
-                proc.WaitForExit(10000);
-                AppendLog($"[情報] プロセスを終了しました (PID {pid})", project);
-            }
-            catch (ArgumentException)
-            {
-                // 既に終了済み
-            }
-            catch (Exception ex)
-            {
-                AppendLog($"[警告] プロセス (PID {pid}) を終了できませんでした: {ex.Message}", project);
-            }
-        }
-
-        project.IsLaunchedByBuilder = false;
-        project.IsDetectedExternally = false;
+        await KillRunningProcessesAsync(project, state.Pids);
 
         await RunCommandAsync(project.FolderPath, project.BuildCommand, project);
 
@@ -710,6 +690,50 @@ public partial class MainViewModel : ObservableObject
     }
 
     private bool CanRebuildAndRestartSelf() => SelectedProject?.IsSelf == true;
+
+    /// <summary>
+    /// 実行中のプロジェクトを終了する。自分自身(Builder)は専用の停止手順が必要なため対象外。
+    /// </summary>
+    [RelayCommand]
+    private async Task StopProject(ProjectEntry? project)
+    {
+        if (project is not { IsRunning: true, IsSelf: false }) return;
+
+        var state = (await Task.Run(() => _runningProcessDetector.DetectRunningProjects([project.FolderPath])))
+            .GetValueOrDefault(project.FolderPath, ProjectRunState.NotRunning);
+
+        AppendCommandLog("> 停止", project);
+
+        await KillRunningProcessesAsync(project, state.Pids);
+    }
+
+    /// <summary>
+    /// 指定したPIDのプロセスをプロセスツリーごと終了し、Builder側の実行中フラグをリセットする。
+    /// </summary>
+    private async Task KillRunningProcessesAsync(ProjectEntry project, IReadOnlyList<int> pids)
+    {
+        foreach (var pid in pids)
+        {
+            try
+            {
+                using var proc = Process.GetProcessById(pid);
+                proc.Kill(entireProcessTree: true);
+                await Task.Run(() => proc.WaitForExit(10000));
+                AppendLog($"[情報] プロセスを終了しました (PID {pid})", project);
+            }
+            catch (ArgumentException)
+            {
+                // 既に終了済み
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[警告] プロセス (PID {pid}) を終了できませんでした: {ex.Message}", project);
+            }
+        }
+
+        project.IsLaunchedByBuilder = false;
+        project.IsDetectedExternally = false;
+    }
 
     /// <summary>
     /// pull対象(GitBehindCount &gt; 0)があるプロジェクトすべてに対して、
@@ -760,27 +784,7 @@ public partial class MainViewModel : ObservableObject
 
         if (wasRunning)
         {
-            foreach (var pid in runState.Pids)
-            {
-                try
-                {
-                    using var proc = Process.GetProcessById(pid);
-                    proc.Kill(entireProcessTree: true);
-                    proc.WaitForExit(10000);
-                    AppendLog($"[情報] プロセスを終了しました (PID {pid})", project);
-                }
-                catch (ArgumentException)
-                {
-                    // 既に終了済み
-                }
-                catch (Exception ex)
-                {
-                    AppendLog($"[警告] プロセス (PID {pid}) を終了できませんでした: {ex.Message}", project);
-                }
-            }
-
-            project.IsLaunchedByBuilder = false;
-            project.IsDetectedExternally = false;
+            await KillRunningProcessesAsync(project, runState.Pids);
         }
 
         if (!await RunCommandQuietAsync(project.FolderPath, "git pull", project, ct))
