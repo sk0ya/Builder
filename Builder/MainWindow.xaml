@@ -468,6 +468,19 @@
                             </StackPanel>
                         </Button>
 
+                        <Button Command="{Binding RebuildAndRestartCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Foreground="{DynamicResource ThemeAccent}"
+                                Height="30" Padding="10,0" FontSize="12"
+                                ToolTip="実行中のプロセスを終了→ビルド→同じ権限レベルで再起動します"
+                                Visibility="{Binding SelectedProject.CanRebuildAndRestart, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Restart" Width="15" Height="15"
+                                                         Margin="0,0,4,0" VerticalAlignment="Center" />
+                                <TextBlock Text="ビルド&amp;再起動" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
                         <Button Command="{Binding OpenFolderCommand}"
                                 Style="{StaticResource MaterialDesignToolButton}"
                                 ToolTip="フォルダを開く" Width="28" Height="28">

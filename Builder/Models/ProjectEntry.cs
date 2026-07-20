@@ -52,6 +52,7 @@ public class ProjectEntry : INotifyPropertyChanged
             if (_isLaunchedByBuilder == value) return;
             _isLaunchedByBuilder = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsRunning)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanRebuildAndRestart)));
         }
     }
 
@@ -64,7 +65,22 @@ public class ProjectEntry : INotifyPropertyChanged
             if (_isDetectedExternally == value) return;
             _isDetectedExternally = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsRunning)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanRebuildAndRestart)));
         }
+    }
+
+    private bool _isRunningElevated;
+
+    /// <summary>
+    /// 実行中プロセスが管理者権限で動作しているか。Builderから起動した場合は
+    /// 起動時に確実な値を設定し、外部起動の場合はWMIスキャンでの推定値を用いる。
+    /// ビルド&amp;再起動時にこの値を見て、同じ権限レベルで再起動する。
+    /// </summary>
+    [JsonIgnore]
+    public bool IsRunningElevated
+    {
+        get => _isRunningElevated;
+        set => SetField(ref _isRunningElevated, value);
     }
 
     [JsonIgnore]
@@ -72,6 +88,13 @@ public class ProjectEntry : INotifyPropertyChanged
 
     [JsonIgnore]
     public bool IsSelf => SelfProjectDetector.IsSelf(this);
+
+    /// <summary>
+    /// 汎用「ビルド&amp;再起動」ボタンの表示条件。Builder自身は専用のボタン
+    /// (RebuildAndRestartSelf)を使うため対象外とする。
+    /// </summary>
+    [JsonIgnore]
+    public bool CanRebuildAndRestart => IsRunning && !IsSelf;
 
     private int _gitAheadCount;
     private int _gitBehindCount;

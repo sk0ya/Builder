@@ -58,6 +58,7 @@ public partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(LaunchCommand))]
     [NotifyCanExecuteChangedFor(nameof(RemoveProjectCommand))]
     [NotifyCanExecuteChangedFor(nameof(RebuildAndRestartSelfCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RebuildAndRestartCommand))]
     [NotifyPropertyChangedFor(nameof(HasSelectedProject))]
     private ProjectEntry? _selectedProject;
 
@@ -126,10 +127,18 @@ public partial class MainViewModel : ObservableObject
             var projects = Projects.ToList();
             var folders = projects.Select(p => p.FolderPath).ToList();
 
-            var runningFolders = await Task.Run(() => _runningProcessDetector.DetectRunningFolders(folders));
+            var states = await Task.Run(() => _runningProcessDetector.DetectRunningProjects(folders));
 
             foreach (var project in projects)
-                project.IsDetectedExternally = runningFolders.Contains(project.FolderPath);
+            {
+                var state = states.GetValueOrDefault(project.FolderPath, ProjectRunState.NotRunning);
+                project.IsDetectedExternally = state.IsRunning;
+
+                // Builderから起動した実行中プロセスは起動時点で権限レベルを確実に把握しているため、
+                // 外部スキャンの推定値で上書きしない。
+                if (!project.IsLaunchedByBuilder)
+                    project.IsRunningElevated = state.IsElevated ?? false;
+            }
         }
         finally
         {
@@ -560,19 +569,31 @@ public partial class MainViewModel : ObservableObject
     private void Launch()
     {
         if (SelectedProject == null) return;
+        LaunchProject(SelectedProject);
+    }
 
-        if (string.IsNullOrWhiteSpace(SelectedProject.LaunchCommand))
+    [RelayCommand]
+    private void LaunchAsAdmin()
+    {
+        if (SelectedProject == null) return;
+        LaunchProjectAsAdmin(SelectedProject);
+    }
+
+    private void LaunchProject(ProjectEntry project)
+    {
+        if (string.IsNullOrWhiteSpace(project.LaunchCommand))
         {
-            AppendLog("[エラー] 起動コマンドが設定されていません。");
+            AppendLog("[エラー] 起動コマンドが設定されていません。", project);
             return;
         }
 
-        var project = SelectedProject;
         try
         {
+            project.IsRunningElevated = false;
             _processService.LaunchDetached(project.FolderPath, project.LaunchCommand,
                 line => Application.Current.Dispatcher.Invoke(() => AppendLog(line, project)),
-                running => Application.Current.Dispatcher.Invoke(() => project.IsLaunchedByBuilder = running));
+                running => Application.Current.Dispatcher.Invoke(() => project.IsLaunchedByBuilder = running),
+                () => Application.Current.Dispatcher.Invoke(() => project.IsRunningElevated = true));
             AppendCommandLog($"> {project.LaunchCommand}", project);
         }
         catch (Exception ex)
@@ -581,20 +602,17 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private void LaunchAsAdmin()
+    private void LaunchProjectAsAdmin(ProjectEntry project)
     {
-        if (SelectedProject == null) return;
-
-        if (string.IsNullOrWhiteSpace(SelectedProject.LaunchCommand))
+        if (string.IsNullOrWhiteSpace(project.LaunchCommand))
         {
-            AppendLog("[エラー] 起動コマンドが設定されていません。");
+            AppendLog("[エラー] 起動コマンドが設定されていません。", project);
             return;
         }
 
-        var project = SelectedProject;
         try
         {
+            project.IsRunningElevated = true;
             _processService.LaunchElevated(project.FolderPath, project.LaunchCommand,
                 line => Application.Current.Dispatcher.Invoke(() => AppendLog(line, project)),
                 running => Application.Current.Dispatcher.Invoke(() => project.IsLaunchedByBuilder = running));
@@ -609,6 +627,64 @@ public partial class MainViewModel : ObservableObject
         {
             AppendLog($"[エラー] {ex.Message}", project);
         }
+    }
+
+    /// <summary>
+    /// 実行中のプロジェクトを終了→ビルド→再起動する。自分自身(Builder)は
+    /// 専用のRebuildAndRestartSelfを使うため対象外。実行中プロセスの権限レベル
+    /// (管理者権限かどうか)を判定し、同じ権限で再起動する(必要ならUACダイアログが表示される)。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(HasSelectedProject))]
+    private async Task RebuildAndRestart()
+    {
+        if (SelectedProject is not { IsRunning: true, IsSelf: false } project) return;
+
+        if (string.IsNullOrWhiteSpace(project.BuildCommand))
+        {
+            AppendLog("[エラー] ビルドコマンドが設定されていません。", project);
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(project.LaunchCommand))
+        {
+            AppendLog("[エラー] 起動コマンドが設定されていません。", project);
+            return;
+        }
+
+        var state = (await Task.Run(() => _runningProcessDetector.DetectRunningProjects([project.FolderPath])))
+            .GetValueOrDefault(project.FolderPath, ProjectRunState.NotRunning);
+
+        var wasElevated = project.IsLaunchedByBuilder ? project.IsRunningElevated : state.IsElevated == true;
+
+        AppendCommandLog("> ビルド&再起動", project);
+
+        foreach (var pid in state.Pids)
+        {
+            try
+            {
+                using var proc = Process.GetProcessById(pid);
+                proc.Kill(entireProcessTree: true);
+                proc.WaitForExit(10000);
+                AppendLog($"[情報] プロセスを終了しました (PID {pid})", project);
+            }
+            catch (ArgumentException)
+            {
+                // 既に終了済み
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[警告] プロセス (PID {pid}) を終了できませんでした: {ex.Message}", project);
+            }
+        }
+
+        project.IsLaunchedByBuilder = false;
+        project.IsDetectedExternally = false;
+
+        await RunCommandAsync(project.FolderPath, project.BuildCommand, project);
+
+        if (wasElevated)
+            LaunchProjectAsAdmin(project);
+        else
+            LaunchProject(project);
     }
 
     /// <summary>
@@ -826,9 +902,9 @@ public partial class MainViewModel : ObservableObject
         SaveProjects();
     }
 
-    private async Task RunCommandAsync(string workingDir, string command)
+    private async Task RunCommandAsync(string workingDir, string command, ProjectEntry? project = null)
     {
-        var project = SelectedProject;
+        project ??= SelectedProject;
         IsBusy = true;
         _cts = new CancellationTokenSource();
         AppendCommandLog($"> {command}", project);

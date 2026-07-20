@@ -45,7 +45,7 @@ public class ProcessService
     /// コマンド自体（parts[0]）が管理者権限を要求する場合は CreateProcess が
     /// ERROR_ELEVATION_REQUIRED で失敗するため、UAC 経由での起動にフォールバックする。
     /// </summary>
-    public void LaunchDetached(string workingDirectory, string command, Action<string>? onOutput = null, Action<bool>? onRunningChanged = null)
+    public void LaunchDetached(string workingDirectory, string command, Action<string>? onOutput = null, Action<bool>? onRunningChanged = null, Action? onElevatedFallback = null)
     {
         var parts = ParseCommand(command);
         if (parts.Length == 0) return;
@@ -81,10 +81,14 @@ public class ProcessService
                 UseShellExecute = true,
                 Verb = "runas"
             });
-            if (elevatedProcess != null && onRunningChanged != null)
+            if (elevatedProcess != null)
             {
-                onRunningChanged(true);
-                _ = MonitorRunningStateAsync(elevatedProcess, onRunningChanged);
+                onElevatedFallback?.Invoke();
+                if (onRunningChanged != null)
+                {
+                    onRunningChanged(true);
+                    _ = MonitorRunningStateAsync(elevatedProcess, onRunningChanged);
+                }
             }
             return;
         }
