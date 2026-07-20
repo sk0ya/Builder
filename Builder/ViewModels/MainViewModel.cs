@@ -19,11 +19,14 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly SettingsService _settingsService = new();
     private readonly ProcessService _processService = new();
+    private readonly RunningProcessDetector _runningProcessDetector = new();
     private AppSettings _appSettings = null!;
     private CancellationTokenSource? _cts;
     private readonly DispatcherTimer _filterTimer;
     private readonly DispatcherTimer _gitSyncTimer;
+    private readonly DispatcherTimer _runningScanTimer;
     private readonly SemaphoreSlim _gitSyncLock = new(1, 1);
+    private readonly SemaphoreSlim _runningScanLock = new(1, 1);
 
     /// <summary>新しいログ行が追加されたときに発火（行テキストのみ、改行なし）</summary>
     public event Action<string>? LineAppended;
@@ -104,6 +107,34 @@ public partial class MainViewModel : ObservableObject
         _gitSyncTimer.Tick += async (_, _) => await RefreshAllGitSyncStatusAsync();
         _gitSyncTimer.Start();
         _ = RefreshAllGitSyncStatusAsync();
+
+        _runningScanTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        _runningScanTimer.Tick += async (_, _) => await RefreshRunningStatusAsync();
+        _runningScanTimer.Start();
+        _ = RefreshRunningStatusAsync();
+    }
+
+    /// <summary>
+    /// 全プロジェクトのフォルダを対象にWMIでプロセスをスキャンし、Builder経由でなく
+    /// 手動やVS等から起動されたプロセスも実行中インジケーターに反映する。
+    /// </summary>
+    private async Task RefreshRunningStatusAsync()
+    {
+        if (!await _runningScanLock.WaitAsync(0)) return;
+        try
+        {
+            var projects = Projects.ToList();
+            var folders = projects.Select(p => p.FolderPath).ToList();
+
+            var runningFolders = await Task.Run(() => _runningProcessDetector.DetectRunningFolders(folders));
+
+            foreach (var project in projects)
+                project.IsDetectedExternally = runningFolders.Contains(project.FolderPath);
+        }
+        finally
+        {
+            _runningScanLock.Release();
+        }
     }
 
     private bool ProjectFilter(object item)
@@ -540,7 +571,8 @@ public partial class MainViewModel : ObservableObject
         try
         {
             _processService.LaunchDetached(project.FolderPath, project.LaunchCommand,
-                line => Application.Current.Dispatcher.Invoke(() => AppendLog(line, project)));
+                line => Application.Current.Dispatcher.Invoke(() => AppendLog(line, project)),
+                running => Application.Current.Dispatcher.Invoke(() => project.IsLaunchedByBuilder = running));
             AppendCommandLog($"> {project.LaunchCommand}", project);
         }
         catch (Exception ex)
@@ -564,7 +596,8 @@ public partial class MainViewModel : ObservableObject
         try
         {
             _processService.LaunchElevated(project.FolderPath, project.LaunchCommand,
-                line => Application.Current.Dispatcher.Invoke(() => AppendLog(line, project)));
+                line => Application.Current.Dispatcher.Invoke(() => AppendLog(line, project)),
+                running => Application.Current.Dispatcher.Invoke(() => project.IsLaunchedByBuilder = running));
             AppendCommandLog($"> {project.LaunchCommand} (管理者として実行)", project);
             AppendLog("[情報] UAC の確認画面を表示します。承認後の出力はログに表示されません。", project);
         }

@@ -45,7 +45,7 @@ public class ProcessService
     /// コマンド自体（parts[0]）が管理者権限を要求する場合は CreateProcess が
     /// ERROR_ELEVATION_REQUIRED で失敗するため、UAC 経由での起動にフォールバックする。
     /// </summary>
-    public void LaunchDetached(string workingDirectory, string command, Action<string>? onOutput = null)
+    public void LaunchDetached(string workingDirectory, string command, Action<string>? onOutput = null, Action<bool>? onRunningChanged = null)
     {
         var parts = ParseCommand(command);
         if (parts.Length == 0) return;
@@ -73,7 +73,7 @@ public class ProcessService
         catch (Win32Exception ex) when (ex.NativeErrorCode == ErrorElevationRequired)
         {
             onOutput?.Invoke("[警告] 管理者権限が必要なため、UAC の確認画面を表示します（承認後の出力はログに表示されません）。");
-            Process.Start(new ProcessStartInfo
+            var elevatedProcess = Process.Start(new ProcessStartInfo
             {
                 FileName = parts[0],
                 Arguments = arguments,
@@ -81,37 +81,61 @@ public class ProcessService
                 UseShellExecute = true,
                 Verb = "runas"
             });
+            if (elevatedProcess != null && onRunningChanged != null)
+            {
+                onRunningChanged(true);
+                _ = MonitorRunningStateAsync(elevatedProcess, onRunningChanged);
+            }
             return;
         }
 
-        if (onOutput == null)
+        onRunningChanged?.Invoke(true);
+
+        if (onOutput == null && onRunningChanged == null)
         {
             process.Dispose();
             return;
         }
 
-        process.OutputDataReceived += (_, e) => { if (e.Data != null) onOutput(e.Data); };
-        process.ErrorDataReceived += (_, e) => { if (e.Data != null) onOutput(e.Data); };
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
+        if (onOutput != null)
+        {
+            process.OutputDataReceived += (_, e) => { if (e.Data != null) onOutput(e.Data); };
+            process.ErrorDataReceived += (_, e) => { if (e.Data != null) onOutput(e.Data); };
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+        }
 
-        _ = MonitorDetachedAsync(process, onOutput);
+        _ = MonitorDetachedAsync(process, onOutput, onRunningChanged);
     }
 
-    private static async Task MonitorDetachedAsync(Process process, Action<string> onOutput)
+    private static async Task MonitorDetachedAsync(Process process, Action<string>? onOutput, Action<bool>? onRunningChanged)
     {
         try
         {
             await process.WaitForExitAsync();
             if (process.ExitCode != 0)
-                onOutput($"[Process exited with code {process.ExitCode}]");
+                onOutput?.Invoke($"[Process exited with code {process.ExitCode}]");
         }
         catch (Exception ex)
         {
-            onOutput($"[エラー] {ex.Message}");
+            onOutput?.Invoke($"[エラー] {ex.Message}");
         }
         finally
         {
+            onRunningChanged?.Invoke(false);
+            process.Dispose();
+        }
+    }
+
+    private static async Task MonitorRunningStateAsync(Process process, Action<bool> onRunningChanged)
+    {
+        try
+        {
+            await process.WaitForExitAsync();
+        }
+        finally
+        {
+            onRunningChanged(false);
             process.Dispose();
         }
     }
@@ -120,7 +144,7 @@ public class ProcessService
     /// 起動コマンドを管理者権限（UAC 昇格）で起動する。
     /// ShellExecute 経由になるため標準出力/標準エラーはキャプチャできない。
     /// </summary>
-    public void LaunchElevated(string workingDirectory, string command, Action<string>? onOutput = null)
+    public void LaunchElevated(string workingDirectory, string command, Action<string>? onOutput = null, Action<bool>? onRunningChanged = null)
     {
         var parts = ParseCommand(command);
         if (parts.Length == 0) return;
@@ -138,12 +162,15 @@ public class ProcessService
         };
 
         var process = Process.Start(psi);
+        if (process == null) return;
+
+        onRunningChanged?.Invoke(true);
 
         // 標準出力はキャプチャできないため（昇格プロセスとの間でパイプを共有できない）、
         // せめて終了だけは検知してログに残す。ウィンドウが無いままプロセスが
         // 見えなくなる（実質的なゾンビ化）のを防ぐため。
-        if (process != null && onOutput != null)
-            _ = MonitorElevatedAsync(process, onOutput);
+        if (onOutput != null || onRunningChanged != null)
+            _ = MonitorElevatedAsync(process, onOutput, onRunningChanged);
     }
 
     /// <summary>
@@ -166,15 +193,16 @@ public class ProcessService
         return [.. args, "-nodeReuse:false", "-p:UseSharedCompilation=false"];
     }
 
-    private static async Task MonitorElevatedAsync(Process process, Action<string> onOutput)
+    private static async Task MonitorElevatedAsync(Process process, Action<string>? onOutput, Action<bool>? onRunningChanged = null)
     {
         try
         {
             await process.WaitForExitAsync();
-            onOutput($"[終了] 管理者権限で起動したプロセスが終了しました (終了コード: {process.ExitCode})");
+            onOutput?.Invoke($"[終了] 管理者権限で起動したプロセスが終了しました (終了コード: {process.ExitCode})");
         }
         finally
         {
+            onRunningChanged?.Invoke(false);
             process.Dispose();
         }
     }

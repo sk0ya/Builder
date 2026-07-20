@@ -250,6 +250,11 @@
                                 <StackPanel Grid.Column="1">
                                     <DockPanel>
                                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Ellipse Width="7" Height="7" Margin="0,0,4,0"
+                                                     VerticalAlignment="Center"
+                                                     Fill="#66BB6A"
+                                                     ToolTip="実行中"
+                                                     Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                             <TextBlock Text="{Binding GitBehindCount, StringFormat='↓{0}'}"
                                                        Visibility="{Binding HasBehind, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                        FontSize="10" Foreground="#64B5F6" Margin="4,0,0,0" />

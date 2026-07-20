@@ -33,6 +33,40 @@ public class ProjectEntry : INotifyPropertyChanged
     [JsonIgnore]
     public string Log { get; set; } = string.Empty;
 
+    private bool _isLaunchedByBuilder;
+    private bool _isDetectedExternally;
+
+    /// <summary>
+    /// Builderから起動して実行中に加え、外部(手動起動やVS等)から起動され
+    /// WMIスキャンで検出されたプロセスも含めた実行中判定。
+    /// </summary>
+    [JsonIgnore]
+    public bool IsRunning => _isLaunchedByBuilder || _isDetectedExternally;
+
+    [JsonIgnore]
+    public bool IsLaunchedByBuilder
+    {
+        get => _isLaunchedByBuilder;
+        set
+        {
+            if (_isLaunchedByBuilder == value) return;
+            _isLaunchedByBuilder = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsRunning)));
+        }
+    }
+
+    [JsonIgnore]
+    public bool IsDetectedExternally
+    {
+        get => _isDetectedExternally;
+        set
+        {
+            if (_isDetectedExternally == value) return;
+            _isDetectedExternally = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsRunning)));
+        }
+    }
+
     [JsonIgnore]
     public bool IsGitRepository => Directory.Exists(Path.Combine(FolderPath, ".git"));
 
