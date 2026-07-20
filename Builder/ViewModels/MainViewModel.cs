@@ -711,6 +711,105 @@ public partial class MainViewModel : ObservableObject
 
     private bool CanRebuildAndRestartSelf() => SelectedProject?.IsSelf == true;
 
+    /// <summary>
+    /// pull対象(GitBehindCount &gt; 0)があるプロジェクトすべてに対して、
+    /// pull → ビルド → (実行中だった場合のみ)同じ権限レベルで再起動、を順番に行う。
+    /// Builder自身は専用のRebuildAndRestartSelfがあるため対象外。
+    /// </summary>
+    [RelayCommand]
+    private async Task BulkUpdate()
+    {
+        var targets = Projects.Where(p => p.IsGitRepository && p.HasBehind && !p.IsSelf).ToList();
+        if (targets.Count == 0)
+        {
+            AppendLog("[一括更新] pull対象のプロジェクトはありません。");
+            return;
+        }
+
+        IsBusy = true;
+        _cts = new CancellationTokenSource();
+        AppendLog($"[一括更新] {targets.Count} 件のプロジェクトを更新します。");
+
+        try
+        {
+            foreach (var project in targets)
+            {
+                if (_cts.Token.IsCancellationRequested) break;
+                await UpdateProjectAsync(project, _cts.Token);
+            }
+
+            AppendLog(_cts.Token.IsCancellationRequested ? "[一括更新] キャンセルしました。" : "[一括更新] 完了しました。");
+        }
+        finally
+        {
+            IsBusy = false;
+            _cts = null;
+        }
+
+        _ = RefreshAllGitSyncStatusAsync();
+    }
+
+    private async Task UpdateProjectAsync(ProjectEntry project, CancellationToken ct)
+    {
+        AppendLog($"[一括更新] {project.Name}", project);
+
+        var state = await Task.Run(() => _runningProcessDetector.DetectRunningProjects([project.FolderPath]), ct);
+        var runState = state.GetValueOrDefault(project.FolderPath, ProjectRunState.NotRunning);
+        var wasRunning = project.IsRunning;
+        var wasElevated = project.IsLaunchedByBuilder ? project.IsRunningElevated : runState.IsElevated == true;
+
+        if (wasRunning)
+        {
+            foreach (var pid in runState.Pids)
+            {
+                try
+                {
+                    using var proc = Process.GetProcessById(pid);
+                    proc.Kill(entireProcessTree: true);
+                    proc.WaitForExit(10000);
+                    AppendLog($"[情報] プロセスを終了しました (PID {pid})", project);
+                }
+                catch (ArgumentException)
+                {
+                    // 既に終了済み
+                }
+                catch (Exception ex)
+                {
+                    AppendLog($"[警告] プロセス (PID {pid}) を終了できませんでした: {ex.Message}", project);
+                }
+            }
+
+            project.IsLaunchedByBuilder = false;
+            project.IsDetectedExternally = false;
+        }
+
+        if (!await RunCommandQuietAsync(project.FolderPath, "git pull", project, ct))
+            return;
+
+        if (!string.IsNullOrWhiteSpace(project.BuildCommand))
+        {
+            if (!await RunCommandQuietAsync(project.FolderPath, project.BuildCommand, project, ct))
+                return;
+        }
+        else
+        {
+            AppendLog("[警告] ビルドコマンドが設定されていないため、ビルドをスキップしました。", project);
+        }
+
+        if (!wasRunning) return;
+
+        if (string.IsNullOrWhiteSpace(project.LaunchCommand))
+        {
+            AppendLog("[警告] 起動コマンドが設定されていないため、再起動をスキップしました。", project);
+            return;
+        }
+
+        if (wasElevated)
+            LaunchProjectAsAdmin(project);
+        else
+            LaunchProject(project);
+    }
+
     [RelayCommand]
     private void SaveSettings()
     {
@@ -907,6 +1006,25 @@ public partial class MainViewModel : ObservableObject
         project ??= SelectedProject;
         IsBusy = true;
         _cts = new CancellationTokenSource();
+
+        try
+        {
+            await RunCommandQuietAsync(workingDir, command, project, _cts.Token);
+        }
+        finally
+        {
+            IsBusy = false;
+            _cts = null;
+        }
+    }
+
+    /// <summary>
+    /// IsBusy/_cts の管理を行わない版のコマンド実行。一括更新のように複数コマンドを
+    /// 連続実行する呼び出し元が、全体を通して1つの busy 状態・キャンセルトークンを
+    /// 管理できるようにするため分離している。
+    /// </summary>
+    private async Task<bool> RunCommandQuietAsync(string workingDir, string command, ProjectEntry? project, CancellationToken ct)
+    {
         AppendCommandLog($"> {command}", project);
 
         try
@@ -914,22 +1032,20 @@ public partial class MainViewModel : ObservableObject
             await _processService.RunAsync(workingDir, command, line =>
             {
                 Application.Current.Dispatcher.Invoke(() => AppendLog(line, project));
-            }, _cts.Token);
+            }, ct);
 
             AppendLog("[完了]", project);
+            return true;
         }
         catch (OperationCanceledException)
         {
             AppendLog("[キャンセル]", project);
+            return false;
         }
         catch (Exception ex)
         {
             AppendLog($"[エラー] {ex.Message}", project);
-        }
-        finally
-        {
-            IsBusy = false;
-            _cts = null;
+            return false;
         }
     }
 
