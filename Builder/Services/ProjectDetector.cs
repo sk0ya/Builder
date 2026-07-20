@@ -115,15 +115,78 @@ public static class ProjectDetector
     }
 
     // Go (go.mod)
+    // ルート直下だけでなくサブフォルダのモジュールも検出し(モノレポ構成に対応)、
+    // cmd/<name>/main.go パターンがあればそれをエントリポイントとして扱う。
+    // モジュールがルート直下にない場合は `-C` (Go 1.20+) でモジュールのディレクトリを指定する。
     private static bool TryDetectGo(ProjectEntry entry)
     {
-        if (!File.Exists(Path.Combine(entry.FolderPath, "go.mod"))) return false;
+        var goModFiles = Directory.GetFiles(entry.FolderPath, "go.mod", SearchOption.AllDirectories)
+            .Where(f => !f.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Contains("vendor"))
+            .ToList();
+        if (goModFiles.Count == 0) return false;
 
-        entry.BuildCommand = "go build ./...";
-        entry.LaunchCommand = "go run .";
+        var rootPath = entry.FolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var rootName = Path.GetFileName(rootPath);
+
+        // ルート直下のモジュールを優先し、なければパスが短い(=浅い)ものを優先
+        var goMod = goModFiles
+            .OrderBy(f => Path.GetDirectoryName(f) == rootPath ? 0 : 1)
+            .ThenBy(f => f.Length)
+            .First();
+        var moduleDir = Path.GetDirectoryName(goMod)!;
+        var relModuleDir = Path.GetRelativePath(entry.FolderPath, moduleDir).Replace('\\', '/');
+
+        var target = ".";
+        var cmdRoot = Path.Combine(moduleDir, "cmd");
+        if (Directory.Exists(cmdRoot))
+        {
+            var candidates = Directory.GetDirectories(cmdRoot)
+                .Where(d => File.Exists(Path.Combine(d, "main.go")))
+                .Select(Path.GetFileName)
+                .ToList();
+
+            if (candidates.Count > 0)
+            {
+                var moduleName = ReadModuleName(goMod);
+                var preferred = candidates.FirstOrDefault(c => string.Equals(c, moduleName, StringComparison.OrdinalIgnoreCase))
+                    ?? candidates.FirstOrDefault(c => string.Equals(c, rootName, StringComparison.OrdinalIgnoreCase))
+                    ?? candidates.OrderBy(c => c, StringComparer.OrdinalIgnoreCase).First();
+
+                target = $"./cmd/{preferred}";
+            }
+        }
+
+        var binName = target == "." ? rootName : Path.GetFileName(target);
+        var isNested = relModuleDir != ".";
+
+        entry.BuildCommand = isNested
+            ? $"go build -C {Quote(relModuleDir)} -o {binName}.exe {target}"
+            : $"go build -o {binName}.exe {target}";
+
+        entry.LaunchCommand = isNested
+            ? $"go run -C {Quote(relModuleDir)} {target}"
+            : $"go run {target}";
 
         return true;
     }
+
+    private static string? ReadModuleName(string goModPath)
+    {
+        try
+        {
+            var line = File.ReadLines(goModPath).FirstOrDefault(l => l.StartsWith("module "));
+            if (line == null) return null;
+            var name = line["module ".Length..].Trim();
+            var lastSlash = name.LastIndexOf('/');
+            return lastSlash >= 0 ? name[(lastSlash + 1)..] : name;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string Quote(string s) => s.Contains(' ') ? $"\"{s}\"" : s;
 
     // Rust (Cargo.toml)
     private static bool TryDetectRust(ProjectEntry entry)
