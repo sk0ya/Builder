@@ -255,13 +255,6 @@
                                 <StackPanel Grid.Column="1">
                                     <DockPanel>
                                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Button Style="{StaticResource MaterialDesignToolButton}"
-                                                    Command="{Binding DataContext.StopProjectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding}"
-                                                    ToolTip="停止" Width="20" Height="20" Padding="0"
-                                                    Visibility="{Binding CanRebuildAndRestart, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                <materialDesign:PackIcon Kind="Stop" Width="12" Height="12" Foreground="#C62828" />
-                                            </Button>
                                             <Ellipse Width="7" Height="7" Margin="4,0,4,0"
                                                      VerticalAlignment="Center"
                                                      Fill="#66BB6A"
@@ -465,6 +458,14 @@
                                 Style="{StaticResource MaterialDesignFlatButton}"
                                 Height="30" Padding="10,0" FontSize="12">
                             <TextBlock Text="管理者として起動" VerticalAlignment="Center" />
+                        </Button>
+
+                        <Button Command="{Binding StopProjectCommand}"
+                                CommandParameter="{Binding SelectedProject}"
+                                Style="{StaticResource MaterialDesignToolButton}"
+                                ToolTip="停止" Width="30" Height="30" Padding="0"
+                                Visibility="{Binding SelectedProject.CanRebuildAndRestart, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <materialDesign:PackIcon Kind="Stop" Width="15" Height="15" Foreground="#C62828" />
                         </Button>
 
                         <Button Command="{Binding RebuildAndRestartSelfCommand}"
