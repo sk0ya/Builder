@@ -153,11 +153,24 @@ public class ProcessService
         var parts = ParseCommand(command);
         if (parts.Length == 0) return;
 
+        var fileName = parts[0];
         var arguments = parts.Length > 1 ? string.Join(' ', DisableDotnetBuildServers(parts)) : "";
+
+        // rustup が配置する cargo.exe は %USERPROFILE%\.rustup の設定に依存する。
+        // UAC で別の管理者アカウントを指定した場合はプロファイルが切り替わり、
+        // cargo がツールチェーンを見つけられなくなるため、Builder 側の Rust 環境を
+        // 明示した PowerShell を昇格させる。
+        if (Path.GetFileNameWithoutExtension(parts[0]).Equals("cargo", StringComparison.OrdinalIgnoreCase))
+        {
+            var script = BuildElevatedCargoScript(workingDirectory, parts);
+            var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
+            fileName = "pwsh.exe";
+            arguments = $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {encoded}";
+        }
 
         var psi = new ProcessStartInfo
         {
-            FileName = parts[0],
+            FileName = fileName,
             Arguments = arguments,
             WorkingDirectory = workingDirectory,
             UseShellExecute = true,
@@ -175,6 +188,32 @@ public class ProcessService
         // 見えなくなる（実質的なゾンビ化）のを防ぐため。
         if (onOutput != null || onRunningChanged != null)
             _ = MonitorElevatedAsync(process, onOutput, onRunningChanged);
+    }
+
+    private static string BuildElevatedCargoScript(string workingDirectory, string[] parts)
+    {
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var cargoHome = Environment.GetEnvironmentVariable("CARGO_HOME");
+        if (string.IsNullOrWhiteSpace(cargoHome))
+            cargoHome = Path.Combine(userProfile, ".cargo");
+
+        var rustupHome = Environment.GetEnvironmentVariable("RUSTUP_HOME");
+        if (string.IsNullOrWhiteSpace(rustupHome))
+            rustupHome = Path.Combine(userProfile, ".rustup");
+
+        var path = Environment.GetEnvironmentVariable("PATH") ?? "";
+        var sb = new StringBuilder();
+        sb.AppendLine($"$env:USERPROFILE = '{EscapePwsh(userProfile)}'");
+        sb.AppendLine($"$env:CARGO_HOME = '{EscapePwsh(cargoHome)}'");
+        sb.AppendLine($"$env:RUSTUP_HOME = '{EscapePwsh(rustupHome)}'");
+        sb.AppendLine($"$env:PATH = '{EscapePwsh(path)}'");
+        sb.AppendLine($"Set-Location -LiteralPath '{EscapePwsh(workingDirectory)}'");
+        sb.Append($"& '{EscapePwsh(parts[0])}'");
+        foreach (var arg in parts[1..])
+            sb.Append($" '{EscapePwsh(arg)}'");
+        sb.AppendLine();
+        sb.AppendLine("exit $LASTEXITCODE");
+        return sb.ToString();
     }
 
     /// <summary>
