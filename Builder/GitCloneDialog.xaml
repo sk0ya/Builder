@@ -3,30 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
 
-    <materialDesign:Card Width="500" Padding="28,24"
+    <materialDesign:Card x:Name="RootCard" Width="500" Padding="28,24"
                          Background="{DynamicResource MaterialDesignPaper}"
                          UniformCornerRadius="8">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="22" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="4" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="12" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="4" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="12" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="8" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="16" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-
+        <StackPanel>
             <!-- Header -->
-            <StackPanel Grid.Row="0" Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal">
                 <Border Width="32" Height="32" CornerRadius="6"
                         Background="{DynamicResource ThemeAccent}">
                     <materialDesign:PackIcon Kind="Github" Width="18" Height="18"
@@ -44,18 +26,19 @@
             </StackPanel>
 
             <!-- Separator -->
-            <Separator Grid.Row="2" Background="{DynamicResource ThemeSplitter}" />
+            <Separator Background="{DynamicResource ThemeSplitter}" Margin="0,16,0,12" />
 
             <!-- URL Label -->
-            <TextBlock Grid.Row="4"
-                       Text="リポジトリURL"
+            <TextBlock Text="リポジトリURL / ユーザー・組織"
                        FontSize="11" FontWeight="Medium"
                        Foreground="{DynamicResource ThemeSubText}" />
 
             <!-- URL Field -->
-            <Grid Grid.Row="6">
+            <Grid Margin="0,4,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="6" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
@@ -63,33 +46,48 @@
                 <TextBox x:Name="UrlBox"
                          Grid.Column="0"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                         materialDesign:HintAssist.Hint="https://github.com/user/repository"
+                         materialDesign:HintAssist.Hint="https://github.com/user/repository または https://github.com/user/"
                          materialDesign:HintAssist.IsFloating="False"
                          FontSize="13"
                          FontFamily="Consolas"
-                         TextChanged="UrlBox_TextChanged" />
+                         TextChanged="UrlBox_TextChanged"
+                         KeyDown="UrlBox_KeyDown" />
 
                 <Button Grid.Column="2"
                         Style="{StaticResource MaterialDesignOutlinedButton}"
                         Click="PasteUrl_Click"
                         ToolTip="クリップボードから貼り付け"
                         Height="44" Padding="10,0" FontSize="12">
+                    <materialDesign:PackIcon Kind="ContentPaste" Width="16" Height="16"
+                                             VerticalAlignment="Center" />
+                </Button>
+
+                <Button x:Name="FetchReposButton"
+                        Grid.Column="4"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Click="FetchRepos_Click"
+                        IsEnabled="False"
+                        ToolTip="ユーザー/組織のリポジトリ一覧を取得"
+                        Height="44" Padding="10,0" FontSize="12">
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="ContentPaste" Width="14" Height="14"
-                                                  Margin="0,0,4,0" VerticalAlignment="Center" />
-                        <TextBlock Text="貼付" VerticalAlignment="Center" />
+                        <materialDesign:PackIcon Kind="FormatListChecks" Width="16" Height="16"
+                                                 Margin="0,0,4,0" VerticalAlignment="Center" />
+                        <TextBlock Text="一覧" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
             </Grid>
 
+            <TextBlock Text="ユーザー/組織のURL（例: https://github.com/sk0ya/）を入力して「一覧」を押すと、複数リポジトリを一括で取り込めます。"
+                       FontSize="10" TextWrapping="Wrap" Margin="0,4,0,0"
+                       Foreground="{DynamicResource ThemeMutedText}" />
+
             <!-- Parent Folder Label -->
-            <TextBlock Grid.Row="8"
-                       Text="クローン先（親フォルダ）"
-                       FontSize="11" FontWeight="Medium"
+            <TextBlock Text="クローン先（親フォルダ）"
+                       FontSize="11" FontWeight="Medium" Margin="0,12,0,0"
                        Foreground="{DynamicResource ThemeSubText}" />
 
             <!-- Parent Folder Field -->
-            <Grid Grid.Row="10">
+            <Grid Margin="0,4,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="6" />
@@ -119,12 +117,12 @@
             </Grid>
 
             <!-- Clone destination preview -->
-            <Border Grid.Row="12"
-                    Background="{DynamicResource ThemeOutput}"
+            <Border Background="{DynamicResource ThemeOutput}"
                     BorderBrush="{DynamicResource ThemeBorder}"
                     BorderThickness="1"
                     CornerRadius="4"
-                    Padding="10,7">
+                    Padding="10,7"
+                    Margin="0,12,0,0">
                 <StackPanel Orientation="Horizontal">
                     <materialDesign:PackIcon Kind="FolderArrowRight" Width="14" Height="14"
                                              VerticalAlignment="Center"
@@ -139,33 +137,158 @@
                 </StackPanel>
             </Border>
 
+            <!-- Repository list (bulk mode) -->
+            <ProgressBar x:Name="LoadingBar"
+                         Style="{StaticResource MaterialDesignLinearProgressBar}"
+                         IsIndeterminate="True"
+                         Height="4" Margin="0,10,0,0"
+                         Visibility="Collapsed" />
+
+            <Grid x:Name="RepoListSection" Margin="0,12,0,0" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Toolbar -->
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock x:Name="RepoSummaryText"
+                               Grid.Column="0"
+                               FontSize="11" VerticalAlignment="Center"
+                               Foreground="{DynamicResource ThemeSubText}" />
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="全選択"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Click="SelectAll_Click"
+                                Height="26" Padding="8,0" FontSize="11" MinWidth="0" />
+                        <Button Content="全解除"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Click="ClearAll_Click"
+                                Height="26" Padding="8,0" FontSize="11" MinWidth="0" Margin="4,0,0,0" />
+                    </StackPanel>
+                </Grid>
+
+                <TextBox x:Name="RepoFilterBox"
+                         Grid.Row="1"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="リポジトリ名で絞り込み"
+                         materialDesign:HintAssist.IsFloating="False"
+                         FontSize="12" Height="34" Margin="0,6,0,0"
+                         TextChanged="RepoFilterBox_TextChanged" />
+
+                <ScrollViewer Grid.Row="2" MaxHeight="260" Margin="0,6,0,0"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="RepoList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,2" Padding="8,6" CornerRadius="4"
+                                        Background="{DynamicResource ThemeOutput}"
+                                        BorderBrush="{DynamicResource ThemeBorder}"
+                                        BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <CheckBox Grid.Column="0"
+                                                  IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                  IsEnabled="{Binding CanSelect}"
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,8,0" />
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Repository.Name}"
+                                                           FontSize="12" FontWeight="Medium"
+                                                           Foreground="{DynamicResource MaterialDesignBody}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <Border Background="{DynamicResource ThemeBorder}"
+                                                        CornerRadius="3" Padding="4,1" Margin="6,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        Visibility="{Binding Repository.IsPrivate, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <TextBlock Text="Private" FontSize="9"
+                                                               Foreground="{DynamicResource ThemeSubText}" />
+                                                </Border>
+                                                <Border Background="{DynamicResource ThemeBorder}"
+                                                        CornerRadius="3" Padding="4,1" Margin="4,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        Visibility="{Binding Repository.IsFork, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <TextBlock Text="Fork" FontSize="9"
+                                                               Foreground="{DynamicResource ThemeSubText}" />
+                                                </Border>
+                                                <Border Background="{DynamicResource ThemeBorder}"
+                                                        CornerRadius="3" Padding="4,1" Margin="4,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        Visibility="{Binding Repository.IsArchived, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <TextBlock Text="Archived" FontSize="9"
+                                                               Foreground="{DynamicResource ThemeSubText}" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Repository.Description}"
+                                                       FontSize="10" Margin="0,1,0,0"
+                                                       Foreground="{DynamicResource ThemeMutedText}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Visibility="{Binding Repository.Description, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center"
+                                                    HorizontalAlignment="Right" Margin="8,0,0,0">
+                                            <TextBlock Text="{Binding StatusText}"
+                                                       FontSize="10" HorizontalAlignment="Right"
+                                                       Foreground="{DynamicResource ThemeAccent}"
+                                                       Visibility="{Binding StatusText, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                            <TextBlock Text="{Binding MetaText}"
+                                                       FontSize="10" HorizontalAlignment="Right"
+                                                       Foreground="{DynamicResource ThemeMutedText}"
+                                                       Visibility="{Binding MetaText, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+
             <!-- Error Text -->
             <TextBlock x:Name="ErrorText"
-                       Grid.Row="13"
                        Foreground="#EF5350"
                        FontSize="11"
-                       Margin="0,4,0,0"
+                       TextWrapping="Wrap"
+                       Margin="0,8,0,0"
                        Visibility="Collapsed" />
 
             <!-- Buttons -->
-            <StackPanel Grid.Row="14" Orientation="Horizontal" HorizontalAlignment="Right">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
                 <Button Content="キャンセル"
                         Style="{StaticResource MaterialDesignFlatButton}"
                         Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
                         CommandParameter="{x:Null}"
                         Height="36" Padding="16,0" FontSize="13"
                         Margin="0,0,8,0" />
-                <Button Style="{StaticResource MaterialDesignFlatButton}"
+                <Button x:Name="PrimaryButton"
+                        Style="{StaticResource MaterialDesignFlatButton}"
                         Foreground="{DynamicResource ThemeAccent}"
                         Click="OnClone"
                         Height="36" Padding="16,0" FontSize="13">
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="SourceBranchSync" Width="15" Height="15"
-                                                  Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="クローン" VerticalAlignment="Center" />
+                        <materialDesign:PackIcon x:Name="PrimaryButtonIcon"
+                                                 Kind="SourceBranchSync" Width="15" Height="15"
+                                                 Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="CloneButtonText" Text="クローン" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
             </StackPanel>
-        </Grid>
+        </StackPanel>
     </materialDesign:Card>
 </UserControl>

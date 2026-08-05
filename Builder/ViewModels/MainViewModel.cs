@@ -319,16 +319,24 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task AddProjectFromGithub()
     {
-        var view = new GitCloneDialog(_appSettings.LastCloneParentFolder);
+        var view = new GitCloneDialog(_appSettings.LastCloneParentFolder,
+                                      Projects.Select(p => p.FolderPath));
         var result = await DialogHost.Show(view, "RootDialog");
         if (result is not true) return;
-
-        var url = view.RepoUrl;
-        var destPath = view.DestinationPath;
 
         // 親フォルダを保存
         _appSettings.LastCloneParentFolder = view.ParentFolder;
         _settingsService.Save(_appSettings);
+
+        // 一覧から複数選択された場合は一括クローン
+        if (view.SelectedRepositories.Count > 0)
+        {
+            await RunBulkGitCloneAsync(view.SelectedRepositories, view.ParentFolder);
+            return;
+        }
+
+        var url = view.RepoUrl;
+        var destPath = view.DestinationPath;
         var projectName = Path.GetFileName(destPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         if (string.IsNullOrEmpty(projectName))
             projectName = GitCloneDialog.ExtractRepoName(url);
@@ -347,11 +355,94 @@ public partial class MainViewModel : ObservableObject
         await RunGitCloneAsync(url, destPath, string.IsNullOrEmpty(projectName) ? "Repository" : projectName);
     }
 
-    private async Task RunGitCloneAsync(string url, string destPath, string projectName)
+    /// <summary>
+    /// GitHubの一覧でチェックされたリポジトリを、親フォルダ配下へ順番にクローンして
+    /// プロジェクトに追加します。1件失敗しても残りは続行します。
+    /// </summary>
+    private async Task RunBulkGitCloneAsync(IReadOnlyList<GitHubRepository> repositories, string parentFolder)
     {
-        var project = SelectedProject;
+        try { Directory.CreateDirectory(parentFolder); }
+        catch (Exception ex)
+        {
+            AppendLog($"[エラー] フォルダの作成に失敗しました: {ex.Message}");
+            return;
+        }
+
         IsBusy = true;
         _cts = new CancellationTokenSource();
+
+        // 途中で選択を切り替えると進捗ログが別タブに移ってしまうため、
+        // 一括処理中は開始時の選択プロジェクトにログを出し続ける。
+        var logOwner = SelectedProject;
+        AppendLog($"[一括クローン] {repositories.Count} 件のリポジトリを取り込みます。", logOwner);
+
+        var succeeded = 0;
+        var failed = 0;
+
+        try
+        {
+            for (var i = 0; i < repositories.Count; i++)
+            {
+                if (_cts.Token.IsCancellationRequested) break;
+
+                var repo = repositories[i];
+                var destPath = Path.Combine(parentFolder, repo.Name);
+                AppendLog($"[一括クローン] ({i + 1}/{repositories.Count}) {repo.FullName}", logOwner);
+
+                if (Directory.Exists(destPath))
+                {
+                    AppendLog($"[スキップ] 「{repo.Name}」フォルダは既に存在します。", logOwner);
+                    failed++;
+                    continue;
+                }
+
+                if (await CloneRepositoryAsync(repo.CloneUrl, destPath, repo.Name, logOwner, false, _cts.Token))
+                    succeeded++;
+                else
+                    failed++;
+            }
+
+            var cancelled = _cts.Token.IsCancellationRequested;
+            AppendLog(cancelled
+                ? $"[一括クローン] キャンセルしました。（成功 {succeeded} 件 / 失敗・スキップ {failed} 件）"
+                : $"[一括クローン] 完了しました。（成功 {succeeded} 件 / 失敗・スキップ {failed} 件）", logOwner);
+        }
+        finally
+        {
+            IsBusy = false;
+            _cts = null;
+        }
+
+        if (succeeded > 0) _ = RefreshAllGitSyncStatusAsync();
+    }
+
+    private async Task RunGitCloneAsync(string url, string destPath, string projectName)
+    {
+        IsBusy = true;
+        _cts = new CancellationTokenSource();
+
+        try
+        {
+            await CloneRepositoryAsync(url, destPath, projectName, SelectedProject, true, _cts.Token);
+        }
+        finally
+        {
+            IsBusy = false;
+            _cts = null;
+        }
+    }
+
+    /// <summary>
+    /// git clone を1件実行し、成功したらプロジェクトとして追加します。
+    /// IsBusy/_cts の管理は呼び出し側が行います。
+    /// </summary>
+    /// <param name="logOwner">ログの出力先プロジェクト（null なら共通ログ）。</param>
+    /// <param name="selectNewProject">クローンしたプロジェクトを選択状態にするか。</param>
+    private async Task<bool> CloneRepositoryAsync(
+        string url, string destPath, string projectName,
+        ProjectEntry? logOwner, bool selectNewProject, CancellationToken ct)
+    {
+        var project = logOwner;
         AppendCommandLog($"> git clone {url}", project);
         AppendCommandLog($"  → {destPath}", project);
 
@@ -388,7 +479,7 @@ public partial class MainViewModel : ObservableObject
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
-            await process.WaitForExitAsync(_cts.Token);
+            await process.WaitForExitAsync(ct);
             process.WaitForExit();
 
             if (process.ExitCode == 0 && Directory.Exists(destPath))
@@ -402,28 +493,28 @@ public partial class MainViewModel : ObservableObject
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     Projects.Add(entry);
-                    SelectedProject = entry;
+                    if (selectNewProject) SelectedProject = entry;
                     SaveProjects();
                 });
-                AppendLog($"[完了] プロジェクト「{projectName}」を追加しました。", entry);
+                AppendLog($"[完了] プロジェクト「{projectName}」を追加しました。",
+                          selectNewProject ? entry : project);
+                return true;
             }
-            else if (process.ExitCode != 0)
-            {
+
+            if (process.ExitCode != 0)
                 AppendLog($"[エラー] git clone が失敗しました (終了コード: {process.ExitCode})", project);
-            }
+
+            return false;
         }
         catch (OperationCanceledException)
         {
             AppendLog("[キャンセル]", project);
+            return false;
         }
         catch (Exception ex)
         {
             AppendLog($"[エラー] {ex.Message}", project);
-        }
-        finally
-        {
-            IsBusy = false;
-            _cts = null;
+            return false;
         }
     }
 

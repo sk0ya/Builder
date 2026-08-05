@@ -23,6 +23,7 @@ git pull; dotnet build -c Release; dotnet run --project Builder -c Release
 ## 機能
 
 - **プロジェクト管理** - フォルダ選択でプロジェクトを登録・管理
+- **GitHub から取り込み** - リポジトリ URL からのクローンに加え、ユーザー/組織の URL（例: `https://github.com/sk0ya/`）からリポジトリ一覧を表示し、チェックしたものを一括クローン
 - **ビルド & 起動** - プロジェクトごとにビルドコマンド・起動コマンドを設定・実行
 - **Git 連携** - Git リポジトリの自動検出と Git Pull の実行
 - **カスタムアクション** - プロジェクトごとに PowerShell スクリプトを作成・実行
@@ -71,6 +72,15 @@ dotnet run --project Builder
 ## 設定
 
 設定ファイルは `%AppData%/Builder/settings.json` に保存されます。
+
+### GitHub リポジトリ一覧について
+
+一覧取得は GitHub REST API を使用します。認証トークンが見つかった場合はプライベートリポジトリも一覧に含まれ、API のレート制限も緩和されます。トークンは次の順で解決します。
+
+1. 環境変数 `GH_TOKEN` / `GITHUB_TOKEN`
+2. [GitHub CLI](https://cli.github.com/) の `gh auth token`（`gh auth login` 済みの場合）
+
+いずれも無い場合は匿名アクセスとなり、公開リポジトリのみ（60 リクエスト/時）が対象になります。
 
 ## ライセンス
 
