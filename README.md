@@ -2,6 +2,20 @@
 
 Windows デスクトップ向けのプロジェクト管理・ビルドランチャーアプリケーションです。複数のプロジェクトを一元管理し、ビルド・起動コマンドやカスタムスクリプトを統一されたインターフェースから実行できます。
 
+## クイックスタート（コピペで実行）
+
+以下を PowerShell にそのまま貼り付けると、クローン → ビルド → 起動まで実行されます。（要 [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) / [Git](https://git-scm.com/downloads)）
+
+```powershell
+git clone https://github.com/sk0ya/Builder.git "$env:USERPROFILE\Builder"; cd "$env:USERPROFILE\Builder"; dotnet build -c Release; dotnet run --project Builder -c Release
+```
+
+すでにクローン済みの場合は、リポジトリのルートで以下を実行すると最新版に更新して起動します。
+
+```powershell
+git pull; dotnet build -c Release; dotnet run --project Builder -c Release
+```
+
 ## スクリーンショット
 
 <!-- スクリーンショットをここに追加 -->
