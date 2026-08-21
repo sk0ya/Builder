@@ -13,6 +13,13 @@ public class ProcessService
     /// 環境変数で各ツールの ANSI 出力を有効化する。
     /// </summary>
     private const string AnsiPreamble =
+        // PowerShell 7 is normally UTF-8, but the encoding can be inherited from
+        // the host when it is started without a console.  Set the relevant
+        // encoding settings explicitly so Japanese output is not decoded as
+        // the Windows legacy code page (or vice versa).
+        "$utf8 = [System.Text.UTF8Encoding]::new($false)\n" +
+        "$OutputEncoding = $utf8\n" +
+        "[Console]::OutputEncoding = $utf8\n" +
         "$PSStyle.OutputRendering = 'ANSI'\n" +
         "$env:FORCE_COLOR = '1'\n" +
         "$env:CLICOLOR_FORCE = '1'\n" +
