@@ -246,12 +246,20 @@
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
+                                <Image Grid.Column="0"
+                                       Source="{Binding AppIcon}"
+                                       Width="16" Height="16"
+                                       VerticalAlignment="Top"
+                                       Margin="0,2,8,0"
+                                       Stretch="Uniform"
+                                       Visibility="{Binding HasAppIcon, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 <materialDesign:PackIcon Grid.Column="0"
                                                          Kind="{Binding IconKind}"
                                                          Width="16" Height="16"
                                                          VerticalAlignment="Top"
                                                          Margin="0,2,8,0"
-                                                         Foreground="{DynamicResource ThemeSubText}" />
+                                                         Foreground="{DynamicResource ThemeSubText}"
+                                                         Visibility="{Binding HasAppIcon, Converter={StaticResource BooleanToInverseVisibilityConverter}}" />
                                 <StackPanel Grid.Column="1">
                                     <DockPanel>
                                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
+using System.Windows.Media;
 using Builder.Services;
 using MaterialDesignThemes.Wpf;
 
@@ -130,7 +131,43 @@ public class ProjectEntry : INotifyPropertyChanged
     [JsonIgnore]
     public PackIconKind IconKind => _iconKind ??= DetectIconKind();
 
+    [JsonIgnore]
+    public ImageSource? AppIcon
+    {
+        get
+        {
+            if (!_appIconLoaded)
+            {
+                _appIcon = ProjectIconService.Load(this);
+                _appIconLoaded = true;
+            }
+
+            return _appIcon;
+        }
+    }
+
+    [JsonIgnore]
+    public bool HasAppIcon => AppIcon != null;
+
     private PackIconKind? _iconKind;
+    private ImageSource? _appIcon;
+    private bool _appIconLoaded;
+
+    /// <summary>
+    /// ビルド後など、プロジェクト内に新しい実行ファイルが生成されたときに
+    /// 一覧のアイコンを再探索します。
+    /// </summary>
+    public void RefreshAppIcon()
+    {
+        var oldIcon = _appIcon;
+        _appIcon = ProjectIconService.Load(this);
+        _appIconLoaded = true;
+        if (!ReferenceEquals(oldIcon, _appIcon))
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AppIcon)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasAppIcon)));
+        }
+    }
 
     private PackIconKind DetectIconKind()
     {

@@ -1130,6 +1130,7 @@ public partial class MainViewModel : ObservableObject
             }, ct);
 
             AppendLog("[完了]", project);
+            project?.RefreshAppIcon();
             return true;
         }
         catch (OperationCanceledException)
